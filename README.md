@@ -19,7 +19,7 @@ Most (Q)SAR tools are reactive: they score a structure you give them. PRIME-DS p
 Python 3.11–3.13. The pinned `scikit-learn` requires ≥ 3.11.
 
 ```bash
-git clone https://github.com/<account>/prime-ds.git
+git clone https://github.com/kookmin-ipl/prime-ds.git
 cd prime-ds
 pip install -r requirements.txt
 python p00_flask_app.py

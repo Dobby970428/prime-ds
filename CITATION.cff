@@ -9,8 +9,8 @@ type: software
 license: MIT
 version: 1.0.0
 # ↓ 공개 직후 채우십시오
-date-released: "2026-00-00"
-repository-code: "https://github.com/ACCOUNT/prime-ds"
+date-released: "2026-10-20"
+repository-code: "https://github.com/kookmin-ipl/prime-ds"
 doi: "10.5281/zenodo.XXXXXXX"
 abstract: >-
   An open-source in silico platform that generates plausible
