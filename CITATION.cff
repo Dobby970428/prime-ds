@@ -11,7 +11,7 @@ version: 1.0.0
 # ↓ 공개 직후 채우십시오
 date-released: "2026-10-20"
 repository-code: "https://github.com/kookmin-ipl/prime-ds"
-doi: "10.5281/zenodo.XXXXXXX"
+doi: "10.5281/zenodo.23492616"
 abstract: >-
   An open-source in silico platform that generates plausible
   degradation and process-related impurities from a synthetic route

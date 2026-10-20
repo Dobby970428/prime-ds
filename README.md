@@ -8,7 +8,7 @@ Most (Q)SAR tools are reactive: they score a structure you give them. PRIME-DS p
 >
 > Ju, H.; Gong, S.-J.; Yu, S.-H.; Kim, J.-E. *PRIME-DS: An Integrated In Silico Platform for Predicting Degradation and Process-Related Impurities in Drug Substance and Drug Product Development and Supporting ICH M7 Mutagenicity Risk Assessment.* **Pharmaceutics** (submitted).
 >
-> Archived release: `doi:10.5281/zenodo.XXXXXXX`
+> Archived release: `doi:10.5281/zenodo.23492616`
 
 ---
 
