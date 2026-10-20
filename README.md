@@ -8,7 +8,7 @@ Most (Q)SAR tools are reactive: they score a structure you give them. PRIME-DS p
 >
 > Ju, H.; Gong, S.-J.; Yu, S.-H.; Kim, J.-E. *PRIME-DS: An Integrated In Silico Platform for Predicting Degradation and Process-Related Impurities in Drug Substance and Drug Product Development and Supporting ICH M7 Mutagenicity Risk Assessment.* **Pharmaceutics** (submitted).
 >
-> Archived release: `doi:10.5281/zenodo.23492616`
+> Archived release: `doi:10.5281/zenodo.XXXXXXX`
 
 ---
 
@@ -19,7 +19,7 @@ Most (Q)SAR tools are reactive: they score a structure you give them. PRIME-DS p
 Python 3.11–3.13. The pinned `scikit-learn` requires ≥ 3.11.
 
 ```bash
-git clone https://github.com/kookmin-ipl/prime-ds.git
+git clone https://github.com/<account>/prime-ds.git
 cd prime-ds
 pip install -r requirements.txt
 python p00_flask_app.py
@@ -182,7 +182,9 @@ Ensemble specificity is *below* rule-layer specificity by construction: upgrade-
 
 ## Licence
 
-MIT — see [`LICENSE`](LICENSE). The attribution above is part of the licence conditions of the material it names.
+MIT — see [`LICENSE`](LICENSE).
+
+The third-party terms summarised above are reproduced in full in [`NOTICE`](NOTICE), which is the authoritative list: the Toxtree-derived alerts and where each one came from, the Ames dataset's redistribution limits, the commercial predictions that are withheld, the excipient-library sources, and the libraries bundled or loaded at runtime. `LICENSE` holds the MIT text alone so that automated tools detect it correctly; keeping the two files separate does not change any of the conditions.
 
 ## Citing
 

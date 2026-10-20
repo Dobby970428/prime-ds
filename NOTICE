@@ -1,0 +1,97 @@
+PRIME-DS — third-party notices
+==============================
+
+The MIT terms in LICENSE cover the original work in this repository. Some
+material is third party and keeps its own terms. This file is the complete
+list; the "Third-party material and attribution" section of README.md gives
+the same information in context.
+
+-------------------------------------------------------------------------------
+1. Toxtree (GPL-2.0) — (c) Ideaconsult Ltd. and contributors
+-------------------------------------------------------------------------------
+
+Several structural alerts in p62_toxicity_alerts.py derive from the
+Benigni-Bossa rule base as implemented in Toxtree 3.1.0. Each is marked at its
+point of definition; grep for "Attribution:" to list them all.
+
+  verbatim from Toxtree 3.1.0 — the SMARTS string was transcribed unchanged
+      mutant/rules/SA22_gen.java   azide / triazene alerts
+      mutant/rules/SA1_gen.java    acyl halide alert
+      mutant/rules/SA10_gen.java   alpha,beta-unsaturated carbonyls
+                                   (present but currently disabled; see the
+                                   note at its entry)
+
+  adapted from Toxtree 3.1.0 — the pattern was narrowed or rewritten here
+      mutant/rules/SA7_gen.java    epoxide / aziridine, narrowed to ring atoms
+                                   with amide nitrogen excluded
+      mutant/rules/SA12_gen.java   para- and ortho-quinone, bond primitives
+                                   relaxed so aromatic-drawn quinones match
+
+  independent reimplementation — decision logic only, no code or pattern copied
+      mutant/rules SA18, SA19      carbocyclic and heterocyclic polycyclic
+                                   aromatics, reimplemented with RDKit ring
+                                   perception in _scan_pah()
+
+No part of the Toxtree distribution is included in or redistributed with this
+repository. Toxtree was run as a benchmark for the comparison reported in the
+accompanying article, which is use rather than distribution.
+
+-------------------------------------------------------------------------------
+2. Ames mutagenicity dataset — no licence stated by the compiler
+-------------------------------------------------------------------------------
+
+Compiled by Therapeutics Data Commons (AMES, single-prediction toxicity),
+hosted on Harvard Dataverse, doi:10.7910/DVN/21LKWG. The TDC toolkit is
+MIT-licensed; the dataset itself carries no stated licence.
+
+Neither the structures nor the labels are redistributed here. Only
+data/ames_split_manifest.csv is included: InChIKeys, labels and the
+train/validation assignment, which is sufficient to rebuild the exact splits
+from the source dataset. See data/README.md.
+
+Primary source cited by TDC:
+  Xu, C.; Cheng, F.; Chen, L.; Du, Z.; Li, W.; Liu, G.; Lee, P.W.; Tang, Y.
+  In Silico Prediction of Chemical Ames Mutagenicity.
+  J. Chem. Inf. Model. 2012, 52, 2840-2847. doi:10.1021/ci300400a
+
+The experimental record index also holds 29 records from the Hansen benchmark
+(Hansen, K. et al. J. Chem. Inf. Model. 2009, 49, 2077-2081), 12 from Tox21 and
+8 from ISSCAN.
+
+-------------------------------------------------------------------------------
+3. Commercial (Q)SAR predictions — not redistributable
+-------------------------------------------------------------------------------
+
+Per-compound predictions from Derek Nexus 6.6.0 and Sarah Nexus 5.1.0 (Lhasa
+Limited) were generated under licence and are NOT included in this repository.
+The accompanying article reports them in aggregate only; per-compound outputs
+are available from the corresponding author on reasonable request.
+
+Derek Nexus and Sarah Nexus are products of Lhasa Limited; Toxtree of
+Ideaconsult Ltd. Neither organisation endorses this work.
+
+-------------------------------------------------------------------------------
+4. Excipient library sources
+-------------------------------------------------------------------------------
+
+Names follow USP-NF and Ph. Eur. monograph headings; structures are PubChem
+canonical SMILES; 29 entries derive from the FDA Inactive Ingredient Database
+(public domain). Incompatibility annotations summarise the corresponding
+entries of the Handbook of Pharmaceutical Excipients (Pharmaceutical Press)
+and are summaries of fact, not reproduced text.
+
+-------------------------------------------------------------------------------
+5. Libraries and components
+-------------------------------------------------------------------------------
+
+Permissive, used unmodified:
+  RDKit (BSD-3-Clause), scikit-learn (BSD-3-Clause), NumPy, pandas, Flask,
+  Pillow, openpyxl, python-docx, requests, rdchiral
+
+Weak copyleft, used unmodified as libraries:
+  fpdf2 (LGPL-3.0), CairoSVG (LGPL-3.0-or-later)
+
+Loaded at runtime from third-party hosts rather than bundled:
+  Ketcher (Apache-2.0, (c) EPAM Systems) — structure editor, embedded from a
+      third-party public deployment. See "What leaves the machine" in README.md.
+  Cytoscape.js (MIT) — degradation-tree view, loaded from cdnjs.

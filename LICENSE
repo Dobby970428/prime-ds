@@ -1,7 +1,6 @@
 MIT License
 
 Copyright (c) 2026 Hyun Ju, Seong-June Gong, Seo-Hyun Yu, Joo-Eun Kim
-Kookmin University, Seoul, Republic of Korea
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,32 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
--------------------------------------------------------------------------------
-THIRD-PARTY MATERIAL
-
-The MIT terms above cover the original work in this repository. Some material
-is third-party and keeps its own terms. The README section "Third-party
-material and attribution" is the authoritative list; the two items that place
-conditions on redistribution are repeated here.
-
-1. Toxtree (GPL-2.0), (c) Ideaconsult Ltd. and contributors.
-   Three SMARTS patterns in p62_toxicity_alerts.py were transcribed verbatim
-   from the Toxtree 3.1.0 source tree (mutant/rules/): the azide/triazene
-   alert and the acyl halide alert. Each is marked with a source comment at
-   its point of definition. Three further patterns are narrowed variants of
-   Toxtree patterns and are likewise marked. The two fused-polycyclic-
-   aromatic alerts are an independent RDKit reimplementation of the Toxtree
-   decision logic, not a transcription.
-   No part of the Toxtree distribution itself is included in or distributed
-   with this repository.
-
-2. Ames mutagenicity dataset, compiled by Therapeutics Data Commons
-   (doi:10.7910/DVN/21LKWG), no licence stated by the compiler.
-   Neither the structures nor the labels are redistributed here. Only
-   data/ames_split_manifest.csv is included: InChIKeys, labels and the
-   train/validation assignment, sufficient to rebuild the splits from the
-   source dataset.
-
-Per-compound predictions from Derek Nexus and Sarah Nexus (Lhasa Limited)
-were generated under licence and are NOT included in this repository.
