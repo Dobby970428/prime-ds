@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content_class %}content--narrow{% endblock %}
+{% block topbar_actions %}
+  <a class="btn btn--ghost btn--sm" href="{{ back }}">← {{ t('common.back') }}</a>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">📄 {{ t('reports.body') }}</span>
+    <span class="card__spacer"></span>
+    {% for fmt, label, href in downloads %}
+      <a class="btn btn--sm {{ 'btn--primary' if fmt == 'docx' else '' }}" href="{{ href }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+  <div class="card__body">
+    {% if report_text %}
+      <pre class="smiles-box" style="max-height:70vh;overflow:auto;white-space:pre-wrap">{{ report_text }}</pre>
+    {% else %}
+      {{ ui.empty_state('📭', t('reports.empty')) }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRIME-DS 초고도화 독성 예측 리포트</title>
+    <style>
+        body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background-color: #f8f9fa; margin: 0; padding: 30px; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h2 { color: #E65100; border-bottom: 3px solid #FF9800; padding-bottom: 10px; margin-top: 0; }
+        .report-section { margin-bottom: 30px; }
+        .grid-table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        .grid-table th { background-color: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; padding: 12px; font-weight: bold; text-align: center; }
+        .grid-table td { border: 1px solid #FFE0B2; padding: 15px; text-align: center; vertical-align: middle; font-size: 14px; }
+        .highlight-target { background-color: #FFFDE7; font-weight: bold; }
+        .badge-positive { background-color: #FFEBEE; color: #C62828; padding: 6px 12px; border-radius: 20px; font-weight: bold; display: inline-block; }
+        .badge-negative { background-color: #E8F5E9; color: #2E7D32; padding: 6px 12px; border-radius: 20px; font-weight: bold; display: inline-block; }
+        .badge-neutral { background-color: #ECEFF1; color: #455A64; padding: 6px 12px; border-radius: 20px; font-weight: bold; display: inline-block; }
+        .mol-img { border: 1px solid #E0E0E0; border-radius: 6px; background-color: #fafafa; }
+        .toolbar { margin: 16px 0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .toolbar input { flex: 1; min-width: 220px; padding: 8px 12px; border: 1px solid #FFE0B2; border-radius: 6px; font-family: 'Courier New', monospace; }
+        .toolbar button { background: #FF9800; color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .toolbar button:hover { background: #F57C00; }
+        .error { color: #C62828; padding: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📑 PRIME-DS 실측 참조 데이터 검증 리포트 (Read-Across Verification)</h2>
+        <p style="color: #666; font-size: 14px;">
+            ICH M7 가이드라인에 따라 예측 대상과 Hansen/ISSCAN 실측 analogues의 Morgan Tanimoto 유사도를 교차 검증합니다.
+        </p>
+
+        <div class="toolbar">
+            <input type="text" id="smilesInput" placeholder="SMILES (예: Nc1ccc(Cl)cc1)" value="Nc1ccc(Cl)cc1">
+            <button type="button" id="runBtn">리포트 갱신</button>
+        </div>
+
+        <div class="report-section">
+            <table class="grid-table" id="reportTable">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">분류 (Category)</th>
+                        <th style="width: 25%;">화학 구조식 (Structure)</th>
+                        <th style="width: 25%;">SMILES 코드</th>
+                        <th style="width: 20%;">Ames / ICH M7</th>
+                        <th style="width: 15%;">구조 유사도 (Tanimoto)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="5">로딩 중…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function badgeClass(text) {
+            const t = (text || '').toLowerCase();
+            if (t.includes('positive') || t.includes('mutagenic') || t.includes('양성')) return 'badge-positive';
+            if (t.includes('negative') || t.includes('음성')) return 'badge-negative';
+            return 'badge-neutral';
+        }
+
+        function simLabel(sim) {
+            if (sim >= 0.8) return 'High';
+            if (sim >= 0.5) return 'Medium';
+            return 'Low';
+        }
+
+        function loadReport() {
+            const smiles = document.getElementById('smilesInput').value.trim();
+            const qs = new URLSearchParams({ smiles, top_n: '3' });
+            const tbody = document.querySelector('#reportTable tbody');
+            tbody.innerHTML = '<tr><td colspan="5">로딩 중…</td></tr>';
+
+            fetch('/api/predict?' + qs.toString())
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        tbody.innerHTML = `<tr><td colspan="5" class="error">${data.error}</td></tr>`;
+                        return;
+                    }
+                    const t = data.target;
+                    let html = `<tr class="highlight-target">
+                        <td>예측 대상 불순물</td>
+                        <td>${t.img_base64 ? `<img class="mol-img" src="data:image/png;base64,${t.img_base64}" width="150" alt="target">` : '—'}</td>
+                        <td style="font-family: Courier New; font-size:13px;">${t.smiles}</td>
+                        <td><span class="${badgeClass(t.prediction)}">${t.prediction}</span></td>
+                        <td style="color: #E65100;">Target</td>
+                    </tr>`;
+
+                    (data.analogues || []).forEach((ana, index) => {
+                        html += `<tr>
+                            <td>유사 참조 물질 ${index + 1}<br>(${ana.name})</td>
+                            <td>${ana.img_base64 ? `<img class="mol-img" src="data:image/png;base64,${ana.img_base64}" width="150" alt="${ana.name}">` : '—'}</td>
+                            <td style="font-family: Courier New; font-size:13px;">${ana.smiles}</td>
+                            <td><span class="${badgeClass(ana.ames_result)}">${ana.ames_result}</span></td>
+                            <td style="font-weight:bold;">${ana.similarity} (${simLabel(ana.similarity)})</td>
+                        </tr>`;
+                    });
+
+                    if (!(data.analogues || []).length) {
+                        html += '<tr><td colspan="5">Tanimoto 임계값 이상의 유사 참조 물질이 없습니다.</td></tr>';
+                    }
+                    tbody.innerHTML = html;
+                })
+                .catch(err => {
+                    tbody.innerHTML = `<tr><td colspan="5" class="error">API 오류: ${err}</td></tr>`;
+                });
+        }
+
+        document.getElementById('runBtn').addEventListener('click', loadReport);
+        loadReport();
+    </script>
+</body>
+</html>

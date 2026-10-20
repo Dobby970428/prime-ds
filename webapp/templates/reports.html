@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content_class %}content--narrow{% endblock %}
+{% block content %}
+
+{% set groups = [
+  (t('reports.single'), '🔬', has_single, 'single.index', [
+      ('📝 Word', url_for('reports.single_download', fmt='docx'), 'primary'),
+      ('📕 PDF',  url_for('reports.single_download', fmt='pdf'),  'danger'),
+      ('📄 TXT',  url_for('reports.single_download', fmt='txt'),  ''),
+  ]),
+  (t('reports.process'), '🏭', has_process, 'process.index', [
+      ('📊 Excel', url_for('reports.process_download', fmt='xlsx'), 'ok'),
+      ('📕 PDF',   url_for('reports.process_download', fmt='pdf'),  'danger'),
+      ('📝 Word',  url_for('reports.process_download', fmt='docx'), 'primary'),
+      ('📋 JSON',  url_for('reports.process_download', fmt='json'), ''),
+  ]),
+  (t('reports.degradation'), '🧬', has_degradation, 'degradation.index', [
+      ('📕 PDF',   url_for('reports.degradation_download', fmt='pdf'),      'danger'),
+      ('📊 Excel', url_for('reports.degradation_download', fmt='xlsx_img'), 'teal'),
+      ('📄 TXT',   url_for('reports.degradation_download', fmt='txt'),      ''),
+  ]),
+  (t('reports.excipient'), '💊', has_excipient, 'excipient.index', [
+      ('📕 PDF',   url_for('reports.excipient_download', fmt='pdf'),  'danger'),
+      ('📊 Excel', url_for('reports.excipient_download', fmt='xlsx'), 'ok'),
+      ('📄 TXT',   url_for('reports.excipient_download', fmt='txt'),  ''),
+      ('📋 JSON',  url_for('reports.excipient_download', fmt='json'), ''),
+  ]),
+  (t('reports.drugdb'), '💾', has_drugdb, 'search.drug', [
+      ('📝 Word',  url_for('reports.drugdb_download', fmt='docx'), 'primary'),
+      ('📕 PDF',   url_for('reports.drugdb_download', fmt='pdf'),  'danger'),
+      ('📊 Excel', url_for('reports.drugdb_download', fmt='xlsx'), 'ok'),
+      ('📄 TXT',   url_for('reports.drugdb_download', fmt='txt'),  ''),
+      ('📋 JSON',  url_for('reports.drugdb_download', fmt='json'), ''),
+  ]),
+] %}
+
+{% for title, icon, ready, endpoint, links in groups %}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">{{ icon }} {{ title }}</span>
+    <span class="card__spacer"></span>
+    {% if ready %}<span class="badge badge--ok">{{ t('reports.ready') }}</span>
+    {% else %}<span class="badge badge--muted">{{ t('reports.not_ready') }}</span>{% endif %}
+  </div>
+  <div class="card__body">
+    {% if ready %}
+      <div class="btn-row">
+        {% for label, href, tone in links %}
+          <a class="btn {{ 'btn--' ~ tone if tone else '' }}" href="{{ href }}">{{ label }}</a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="small muted" style="margin:0">
+        {{ t('reports.run_first') }} <a href="{{ url_for(endpoint) }}">{{ title }}</a>
+        {{ t('reports.run_first_suffix') }}
+      </p>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+
+<div class="card">
+  <div class="card__body">
+    <p class="small muted" style="margin:0">{{ t('reports.note')|safe }}</p>
+  </div>
+</div>
+{% endblock %}

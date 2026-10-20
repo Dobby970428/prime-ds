@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block topbar_actions %}
+  {% if run %}
+  <form method="post" action="{{ url_for('degradation.clear') }}">
+    <button class="btn btn--sm btn--ghost" type="submit">{{ t('common.clear_results') }}</button>
+  </form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+{# ====================== 입력 ====================== #}
+<form method="post" action="{{ url_for('degradation.run') }}"
+      data-busy="{{ t('degradation.busy') }}"
+      data-busy-text="{{ t('degradation.busy_sub') }}"
+      data-require-canvas="degrad_parent">
+
+  <div class="card">
+    <div class="card__head">
+      <span class="card__title">🧬 {{ t('degradation.conditions') }}</span>
+      <span class="card__spacer"></span>
+      <button class="btn btn--primary" type="submit">{{ t('degradation.run') }}</button>
+    </div>
+    <div class="card__body">
+      <div class="row" style="gap:1.15rem;flex-wrap:nowrap;align-items:stretch">
+        <div style="flex:1 1 380px;min-width:300px">
+          {{ ui.editor('degrad_parent', t('degradation.parent'), 'Parent', 340, canvas.get('degrad_parent','')) }}
+        </div>
+        <div style="flex:1 1 320px;min-width:280px" class="stack">
+          <div class="field">
+            <label class="field__label" for="stress_env">{{ t('degradation.stress_env') }}</label>
+            <select class="select" id="stress_env" name="stress_env">
+              {% for choice in stress_choices %}
+              <option value="{{ choice }}" {{ 'selected' if form.get('stress_env') == choice }}>{{ opt(choice) }}</option>
+              {% endfor %}
+            </select>
+            <div class="field__hint">{{ t('degradation.stress_hint') }}</div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="stress_temp">{{ t('degradation.temperature') }}</label>
+            <input class="input" type="number" id="stress_temp" name="stress_temp"
+                   min="-20" max="150" step="5"
+                   value="{{ form.get('stress_temp', 25.0) }}"
+                   data-enable-when="stress_env!={{ stress_choices[0] }}">
+            <div class="field__hint">{{ t('degradation.temperature_hint') }}</div>
+          </div>
+
+          {{ ui.banner('info', t('degradation.rules_title'), t('degradation.rules_text')) }}
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+
+{# ====================== 결과 ====================== #}
+{% if run and run.products %}
+<a id="result"></a>
+
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">📊 {{ t('degradation.results') }}</span>
+    <span class="card__sub">{{ opt(run.stress_environment) }} · {{ run.temperature_c|fmt(0) }}°C</span>
+    <span class="card__spacer"></span>
+    <a class="btn btn--sm btn--danger" href="{{ url_for('reports.degradation_download', fmt='pdf') }}">📕 PDF</a>
+    <a class="btn btn--sm btn--teal"   href="{{ url_for('reports.degradation_download', fmt='xlsx_img') }}">📊 Excel</a>
+    <a class="btn btn--sm"             href="{{ url_for('reports.degradation_download', fmt='txt') }}">📄 TXT</a>
+  </div>
+  <div class="card__body">
+    <div class="metrics">
+      {{ ui.metric(t('degradation.count'), summary.count, t('common.count_suffix')) }}
+      {{ ui.metric(t('degradation.parent_mw'), run.parent_mw|fmt(2), 'g/mol', run.parent_formula) }}
+      {{ ui.metric(t('degradation.avg_similarity'), summary.avg_confidence|fmt(1), '%') }}
+      {{ ui.metric(t('process.high_risk'), summary.high_risk, t('common.count_suffix'),
+                   tone='danger' if summary.high_risk else 'ok') }}
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>{{ t('degradation.col_route') }}</th>
+          <th>{{ t('degradation.col_product') }}</th>
+          <th class="num">{{ t('common.mw') }}</th>
+          <th>ICH M7</th>
+          <th>{{ t('degradation.col_similarity') }}</th>
+          <th>{{ t('common.mechanism') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in run.products %}
+        <tr class="row--{{ 'danger' if p.signal_tier == 'danger' else ('warn' if p.signal_tier == 'caution' else 'ok') }}">
+          <td>{{ opt(p.pathway) }}<div class="small muted">{{ opt(p.name) }}</div></td>
+          <td>{{ ui.smiles_cell(p.smiles) }}</td>
+          <td class="num">{{ p.mw|fmt(2) }}</td>
+          <td>{{ ui.m7_badge(p.m7_class) }}</td>
+          <td>
+            {{ ui.similarity_badge(p.confidence) }}
+            {% if p.db_match %}<div class="small muted">{{ opt(p.db_match)|shorten(30) }}</div>{% endif %}
+          </td>
+          <td class="small">{{ opt(p.mechanism)|shorten(28) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card__foot">{{ t('degradation.similarity_note')|safe }}</div>
+</div>
+
+
+{# ---- 구조 카드 ---- #}
+<div class="card">
+  <div class="card__head"><span class="card__title">🖼️ {{ t('degradation.structures') }}</span></div>
+  <div class="card__body">
+    <div class="struct-grid">
+      {% for p in run.products %}
+      <div class="struct-card">
+        <div class="struct-card__img">{{ ui.struct_img(p.smiles, '300x220', opt(p.name)) }}</div>
+        <div class="struct-card__body">
+          <div class="struct-card__title">{{ opt(p.name) or p.id }}</div>
+          <div class="struct-card__meta">
+            {{ opt(p.pathway) }}<br>
+            <b class="tnum">{{ p.mw|fmt(2) }}</b> g/mol
+            {% if p.abundance %}· {{ opt(p.abundance) }}{% endif %}
+          </div>
+          <div class="struct-card__badges">
+            {{ ui.m7_badge(p.m7_class) }}
+            {{ ui.similarity_badge(p.confidence) }}
+          </div>
+          {% for a in p.alerts %}
+            <div class="struct-card__badges"><span class="badge badge--danger">🔴 {{ a }}</span></div>
+          {% endfor %}
+          <div class="struct-card__smiles">{{ p.smiles }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% elif run %}
+  <div class="card"><div class="card__body">
+    {{ ui.empty_state('📭', t('degradation.empty_title'), t('degradation.empty_text')) }}
+  </div></div>
+{% endif %}
+
+
+{# ====================== 분해 트리 ====================== #}
+<a id="tree"></a>
+<form method="post" action="{{ url_for('degradation.tree') }}"
+      data-busy="{{ t('tree.busy') }}" data-busy-text="{{ t('tree.busy_sub') }}">
+  <input type="hidden" name="tree_parent" value="{{ run.parent_smiles if run else canvas.get('degrad_parent','') }}">
+
+  <div class="card">
+    <div class="card__head">
+      <span class="card__title">🌳 {{ t('tree.title') }}</span>
+      <span class="card__sub">{{ t('tree.subtitle') }}</span>
+      <span class="card__spacer"></span>
+      <button class="btn btn--ok" type="submit">{{ t('tree.build') }}</button>
+    </div>
+    <div class="card__body">
+      <div class="form-grid">
+        <div class="field">
+          <label class="field__label" for="tree_depth">{{ t('tree.depth') }}</label>
+          <div class="range-row">
+            <input type="range" id="tree_depth" name="tree_depth" min="1" max="4" step="1"
+                   value="{{ tree.max_depth if tree else 3 }}" data-output="out_tree_depth">
+            <output id="out_tree_depth"></output>
+          </div>
+          <div class="field__hint">{{ t('tree.depth_hint') }}</div>
+        </div>
+        <div class="field">
+          <span class="field__label">{{ t('tree.include_ai') }}</span>
+          <label class="check">
+            <input type="checkbox" name="tree_include_ai" {{ 'checked' if (tree.include_ai if tree else True) }}>
+            <span class="check__label">{{ t('tree.include_ai_label') }}</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    {% if tree and not tree.error %}
+    <div class="card__body" style="border-top:1px solid var(--n-200)">
+      <div class="row" style="align-items:center;margin-bottom:.85rem">
+        <span class="badge badge--info">{{ tree.nodes|length }} {{ t('tree.nodes') }}</span>
+        <span class="badge badge--muted">{{ t('tree.max_gen') }} {{ tree.max_depth }} {{ t('tree.generations') }}</span>
+        {% if tree.include_ai %}<span class="badge badge--warn">🤖 {{ t('tree.include_ai') }}</span>{% endif %}
+        <span class="grow"></span>
+        <a class="btn btn--sm btn--danger" href="{{ url_for('reports.degradation_tree_download', fmt='pdf') }}">📕 PDF</a>
+        <a class="btn btn--sm" href="{{ url_for('reports.degradation_tree_download', fmt='json') }}">📋 JSON</a>
+        <a class="btn btn--sm" href="{{ url_for('reports.degradation_tree_download', fmt='csv') }}">📊 CSV</a>
+      </div>
+
+      <div id="tree-graph"
+           style="height:460px;border:1px solid var(--n-200);border-radius:var(--r-md);background:var(--n-25)"></div>
+      <p class="small muted" style="margin-top:.6rem">{{ t('tree.graph_note') }}</p>
+    </div>
+
+    <details class="acc" style="margin:0 1.15rem 1.15rem">
+      <summary>📋 {{ t('tree.node_list') }} ({{ tree.nodes|length }})</summary>
+      <div class="acc__body" style="padding:0">
+        <div class="table-wrap" style="max-height:420px;overflow:auto">
+          <table class="table table--compact">
+            <thead><tr>{% for k in (tree.nodes[0].keys() if tree.nodes else []) %}<th>{{ opt(k) }}</th>{% endfor %}</tr></thead>
+            <tbody>
+            {% for node in tree.nodes %}
+              <tr>{% for v in node.values() %}<td class="small">{{ opt(v|string)|shorten(40) }}</td>{% endfor %}</tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+    {% elif tree and tree.error %}
+    <div class="card__body" style="border-top:1px solid var(--n-200)">
+      {{ ui.banner('danger', t('tree.failed'), tree.error) }}
+    </div>
+    {% endif %}
+  </div>
+</form>
+
+
+{# ====================== Backend Core API ====================== #}
+<a id="api"></a>
+<form method="post" action="{{ url_for('degradation.api') }}" data-busy="{{ t('api.busy') }}">
+  <input type="hidden" name="api_parent" value="{{ run.parent_smiles if run else canvas.get('degrad_parent','') }}">
+  <details class="acc">
+    <summary>🧪 {{ t('api.title') }}</summary>
+    <div class="acc__body">
+      <div class="form-grid" style="margin-bottom:.95rem">
+        <div class="field">
+          <label class="field__label" for="formulation_ph">{{ t('api.ph') }}</label>
+          <input class="input" type="number" id="formulation_ph" name="formulation_ph"
+                 min="0" max="14" step="0.1" value="7.4">
+        </div>
+        <div class="field">
+          <label class="field__label" for="api_depth">{{ t('api.depth') }}</label>
+          <input class="input" type="number" id="api_depth" name="api_depth" min="1" max="4" value="3">
+        </div>
+        <div class="field">
+          <span class="field__label">{{ t('api.image') }}</span>
+          <label class="check">
+            <input type="checkbox" name="include_b64" checked>
+            <span class="check__label">{{ t('api.include_b64') }}</span>
+          </label>
+        </div>
+      </div>
+      <button class="btn btn--primary" type="submit">{{ t('api.generate') }}</button>
+
+      {% if api and api.ok %}
+      <div style="margin-top:1rem">
+        <pre class="smiles-box" style="max-height:400px;overflow:auto">{{ api.json_text|shorten(20000) }}</pre>
+      </div>
+      {% elif api %}
+        {{ ui.banner('danger', t('api.failed'), api.error) }}
+      {% endif %}
+    </div>
+  </details>
+</form>
+
+{% endblock %}
+
+
+{% block scripts %}
+{% if tree and tree.cytoscape %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+<script>
+(function () {
+  var data = {{ tree.cytoscape|tojson_safe|safe }};
+  var el = document.getElementById("tree-graph");
+  if (!el || !window.cytoscape || !data) return;
+
+  var elements = [];
+  (data.nodes || []).forEach(function (n) { elements.push(n.data ? n : { data: n }); });
+  (data.edges || []).forEach(function (e) { elements.push(e.data ? e : { data: e }); });
+  if (!elements.length) {
+    el.innerHTML = '<div class="empty"><div class="empty__title">{{ t("tree.no_nodes") }}</div></div>';
+    return;
+  }
+
+  var TONE = {
+    1: ["#fee2e2", "#b91c1c"], 2: ["#fee2e2", "#b91c1c"],
+    3: ["#fef3c7", "#b45309"], 4: ["#dbeafe", "#1e40af"],
+    5: ["#dcfce7", "#166534"]
+  };
+
+  function cls(d) {
+    var v = d.ich_m7_class !== undefined ? d.ich_m7_class
+          : (d.m7_class !== undefined ? d.m7_class : d.class_number);
+    var n = parseInt(v, 10);
+    return isNaN(n) ? null : n;
+  }
+
+  cytoscape({
+    container: el,
+    elements: elements,
+    style: [
+      { selector: "node", style: {
+          "background-color": function (n) { var c = cls(n.data()); return TONE[c] ? TONE[c][0] : "#f1f5f9"; },
+          "border-color":     function (n) { var c = cls(n.data()); return TONE[c] ? TONE[c][1] : "#94a3b8"; },
+          "border-width": 2,
+          "label": function (n) {
+            var d = n.data();
+            return String(d.label || d.name || d.id || "").slice(0, 22);
+          },
+          "color": "#0f172a", "font-size": "10px", "font-weight": 600,
+          "text-valign": "bottom", "text-margin-y": 5,
+          "text-wrap": "wrap", "text-max-width": "110px",
+          "width": 34, "height": 34, "shape": "round-rectangle"
+      }},
+      { selector: "edge", style: {
+          "width": 1.6, "line-color": "#cbd5e1",
+          "target-arrow-color": "#94a3b8", "target-arrow-shape": "triangle",
+          "curve-style": "bezier", "arrow-scale": 0.85,
+          "label": "data(label)", "font-size": "8px", "color": "#64748b",
+          "text-rotation": "autorotate", "text-background-color": "#fff",
+          "text-background-opacity": 0.85, "text-background-padding": "2px"
+      }},
+      { selector: "node:selected", style: { "border-width": 4, "border-color": "#4f46e5" } }
+    ],
+    layout: { name: "breadthfirst", directed: true, spacingFactor: 1.35, padding: 24, animate: false },
+    minZoom: 0.25, maxZoom: 3, wheelSensitivity: 0.25
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

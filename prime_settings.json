@@ -1,0 +1,7 @@
+{
+  "ambit_api_url": "http://localhost:8080/ambit2",
+  "ambit_query_timeout_sec": 3,
+  "use_rdkit_oecd_fallback": true,
+  "ambit_bridge_host": "127.0.0.1",
+  "ambit_bridge_port": 8080
+}

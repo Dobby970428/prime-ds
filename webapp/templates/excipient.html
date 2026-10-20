@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+
+{% block topbar_actions %}
+  {% if run %}
+  <form method="post" action="{{ url_for('excipient.clear') }}">
+    <button class="btn btn--sm btn--ghost" type="submit">{{ t('common.clear_results') }}</button>
+  </form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<form method="post" action="{{ url_for('excipient.run') }}"
+      data-busy="{{ t('excipient.busy') }}"
+      data-busy-text="{{ t('excipient.busy_sub') }}"
+      data-require-canvas="excipient_api">
+
+  <div class="card">
+    <div class="card__head">
+      <span class="card__title">💊 {{ t('excipient.input_title') }}</span>
+      <span class="card__sub">
+        {{ t('excipient.catalog') }} {{ catalog.stats.get('total', catalog.choices|length) }}
+        {%- if catalog.stats.get('master') %}
+          · {{ t('excipient.records') }} {{ catalog.stats.get('records', 0) }}
+          ({{ t('excipient.master') }} {{ catalog.stats.master }} ·
+           {{ t('excipient.opensource') }} {{ catalog.stats.opensource }})
+        {%- endif %}
+      </span>
+      <span class="card__spacer"></span>
+      <button class="btn btn--primary" type="submit" {{ 'disabled' if not selected }}>
+        {{ t('excipient.run') }}{% if selected %} ({{ selected|length }}){% endif %}
+      </button>
+    </div>
+
+    <div class="card__body">
+      <div class="row" style="gap:1.15rem;flex-wrap:nowrap;align-items:stretch">
+
+        <div style="flex:1 1 360px;min-width:300px">
+          {{ ui.editor('excipient_api', t('excipient.api'), 'Drug Substance', 340, canvas.get('excipient_api','')) }}
+        </div>
+
+        <div style="flex:1 1 400px;min-width:320px" class="stack">
+          <div>
+            <div class="field__label" style="margin-bottom:.4rem">
+              {{ t('excipient.selected') }}
+              {% if selected %}<span class="badge badge--info">{{ selected|length }}</span>{% endif %}
+            </div>
+            {% if selected %}
+              <div class="chip-row">
+                {% for key in selected %}
+                <span class="chip">
+                  {{ catalog.labels.get(key, key) }}
+                  <input type="hidden" name="key" value="{{ key }}">
+                </span>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p class="small muted" style="margin:0">{{ t('excipient.select_prompt') }}</p>
+            {% endif %}
+          </div>
+
+          <div class="field">
+            <span class="field__label">{{ t('binary.mode') }}</span>
+            <label class="check">
+              <input type="radio" name="mode" value="binary" {{ 'checked' if mode != 'matrix' }}
+                     style="width:15px;height:15px;accent-color:var(--brand-600)">
+              <span class="check__label"><b>{{ t('binary.mode_binary') }}</b></span>
+            </label>
+            <label class="check" style="margin-top:.3rem">
+              <input type="radio" name="mode" value="matrix" {{ 'checked' if mode == 'matrix' }}
+                     style="width:15px;height:15px;accent-color:var(--brand-600)">
+              <span class="check__label">{{ t('binary.mode_matrix') }}</span>
+            </label>
+            <div class="field__hint" style="margin-top:.35rem">{{ t('binary.mode_hint') }}</div>
+          </div>
+
+          <div class="field" id="ratio-field">
+            <span class="field__label">{{ t('binary.ratio') }}</span>
+            <div class="row row--tight" style="align-items:center">
+              <input class="input" type="number" name="ratio_api" min="0.1" max="100" step="0.1"
+                     value="{{ ratio[0] }}" style="width:82px">
+              <span class="muted">:</span>
+              <input class="input" type="number" name="ratio_exc" min="0.1" max="100" step="0.1"
+                     value="{{ ratio[1] }}" style="width:82px">
+              <span class="small muted">w/w</span>
+            </div>
+            <div class="field__hint">{{ t('binary.ratio_hint') }}</div>
+          </div>
+
+          {{ ui.banner('info', t('excipient.scope_title'), t('excipient.scope_text')) }}
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+
+{# ---- 부형제 고르기 ---- #}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">📚 {{ t('excipient.selection_title') }}</span>
+    <span class="card__spacer"></span>
+    {% if selected %}
+    <form method="post" action="{{ url_for('excipient.select') }}">
+      <input type="hidden" name="action" value="clear">
+      <button class="btn btn--sm btn--ghost" type="submit">{{ t('excipient.clear_selection') }}</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="card__body">
+    <form method="get" id="exc-filter" style="margin-bottom:1rem">
+      <div class="row" style="align-items:flex-end;margin-bottom:.7rem">
+        <div class="field grow" style="max-width:360px">
+          <label class="field__label" for="q">{{ t('excipient.name_search') }}</label>
+          <input class="input" type="search" id="q" name="q" value="{{ query }}"
+                 placeholder="lactose, macrogol, HPMC, gelatin…">
+        </div>
+        <button class="btn" type="submit">{{ t('common.search') }}</button>
+        {% if query or active_cats %}
+          <a class="btn btn--ghost" href="{{ url_for('excipient.index') }}">{{ t('common.reset') }}</a>
+        {% endif %}
+      </div>
+
+      <div class="field">
+        <span class="field__label">{{ t('common.category') }}</span>
+        <div class="filter-chips">
+          <a class="filter-chip{{ ' is-on' if not active_cats else '' }}"
+             href="{{ url_for('excipient.index', q=query or None) }}">
+            {{ t('common.none') if False else 'All' }}
+            <span class="filter-chip__n">{{ catalog.choices|length }}</span>
+          </a>
+          {% for c in catalog.categories %}
+            {% set others = active_cats | reject('equalto', c) | list %}
+            {% set next_cats = others if c in active_cats else (active_cats + [c]) %}
+            <a class="filter-chip{{ ' is-on' if c in active_cats else '' }}"
+               href="{{ url_for('excipient.index', q=query or None, cat=next_cats) }}">
+              {{ c }}
+              <span class="filter-chip__n">{{ catalog.category_counts.get(c, 0) }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    </form>
+
+    <form method="post" action="{{ url_for('excipient.select') }}" id="exc-pick">
+      <input type="hidden" name="action" value="add">
+      <input type="hidden" name="next" value="{{ request.full_path }}">
+
+      {% if grouped %}
+      <div class="btn-row" style="margin-bottom:.7rem">
+        <button class="btn btn--sm btn--ghost" type="button" data-exc-toggle="open">
+          {{ t('excipient.expand_all') }}
+        </button>
+        <button class="btn btn--sm btn--ghost" type="button" data-exc-toggle="close">
+          {{ t('excipient.collapse_all') }}
+        </button>
+        <button class="btn btn--sm btn--ghost" type="button" data-exc-selectall>
+          {{ t('excipient.select_all') }}
+        </button>
+        <span class="grow"></span>
+        <span class="small muted">
+          <b>{{ visible|length }}</b> {{ t('excipient.of_total') }} {{ catalog.choices|length }}
+        </span>
+      </div>
+
+      <div class="exc-groups">
+        {% for group in grouped %}
+        <details class="acc exc-group" {{ 'open' if grouped|length <= 3 or query or active_cats }}>
+          <summary>
+            <b>{{ group.category }}</b>
+            <span class="badge badge--muted">{{ group.count }}</span>
+          </summary>
+          <div class="acc__body" style="padding:0">
+            <div class="table-wrap">
+              <table class="table table--compact">
+                <thead>
+                  <tr>
+                    <th style="width:36px"></th>
+                    <th>{{ t('excipient.name') }}</th>
+                    <th>{{ t('excipient.caution') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                {% for item in group['items'] %}
+                  <tr>
+                    <td>
+                      <input type="checkbox" name="key" value="{{ item.key }}"
+                             {{ 'checked disabled' if item.key in selected }}
+                             style="width:15px;height:15px;accent-color:var(--brand-600)">
+                    </td>
+                    <td>{{ item.label }}</td>
+                    <td class="small">{{ item.caution|shorten(70) }}</td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+        {% endfor %}
+      </div>
+      {% else %}
+        {{ ui.empty_state('🔍', t('excipient.no_match')) }}
+      {% endif %}
+
+      <div class="btn-row" style="margin-top:.85rem">
+        <button class="btn btn--teal" type="submit">➕ {{ t('excipient.add') }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+{# ---- 아질산염 프로파일 ---- #}
+{% if nitrite %}
+<details class="acc">
+  <summary>⚗️ {{ t('excipient.nitrite_title') }} ({{ nitrite|length }})</summary>
+  <div class="acc__body" style="padding:0">
+    <div class="table-wrap">
+      <table class="table table--compact">
+        <thead><tr>{% for k in nitrite[0].keys() %}<th>{{ k }}</th>{% endfor %}</tr></thead>
+        <tbody>
+        {% for row in nitrite %}<tr>{% for v in row.values() %}<td class="small">{{ v }}</td>{% endfor %}</tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card__foot">{{ t('excipient.nitrite_note')|safe }}</div>
+  </div>
+</details>
+{% endif %}
+
+
+{# ====================== 이원 1:1 결과 ====================== #}
+{% if run and run.mode == 'binary' %}
+{% set s = run.summary %}
+{% set bands = {'high':'danger','moderate':'warn','low':'info','none':'ok'} %}
+{% set band_label = {'high': t('binary.band_high'), 'moderate': t('binary.band_moderate'),
+                     'low': t('binary.band_low'), 'none': t('binary.band_none')} %}
+<a id="result"></a>
+
+{# ---- 요약 ---- #}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">🧪 {{ t('binary.results') }}</span>
+    <span class="card__sub">
+      {{ run.api_formula }} · {{ run.ratio[0]|fmt(0) }}:{{ run.ratio[1]|fmt(0) }} (w/w)
+    </span>
+    <span class="card__spacer"></span>
+    <a class="btn btn--sm btn--danger" href="{{ url_for('reports.excipient_download', fmt='pdf') }}">📕 PDF</a>
+    <a class="btn btn--sm btn--ok"     href="{{ url_for('reports.excipient_download', fmt='xlsx') }}">📊 Excel</a>
+    <a class="btn btn--sm"             href="{{ url_for('reports.excipient_download', fmt='txt') }}">📄 TXT</a>
+    <a class="btn btn--sm"             href="{{ url_for('reports.excipient_download', fmt='json') }}">📋 JSON</a>
+  </div>
+  <div class="card__body">
+    <div class="metrics">
+      {{ ui.metric(t('binary.pairs'), s.total_pairs) }}
+      {{ ui.metric(t('binary.interacting'), s.interacting,
+                   tone='danger' if s.bands.high else ('warn' if s.interacting else None)) }}
+      {{ ui.metric(t('binary.clean'), s.clean, tone='ok' if s.clean else None) }}
+      {{ ui.metric(t('binary.total_species'), s.total_hits) }}
+      {{ ui.metric('NDSRI', run.counts.get('NDSRI', 0),
+                   tone='danger' if run.counts.get('NDSRI') else None) }}
+    </div>
+
+    {% if run.amines %}
+    <div class="row row--tight" style="margin-top:1rem;align-items:center">
+      <span class="small muted">{{ t('excipient.amine_sites') }}</span>
+      <span class="badge">{{ t('excipient.secondary') }} {{ run.amines.secondary }}</span>
+      <span class="badge">{{ t('excipient.tertiary') }} {{ run.amines.tertiary }}</span>
+      {% if run.amines.nitrosatable %}
+        <span class="badge badge--danger">{{ t('excipient.nitrosatable') }}</span>
+      {% else %}
+        <span class="badge badge--ok">{{ t('excipient.not_nitrosatable') }}</span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+
+{# ---- 위험도 순위 ---- #}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">📊 {{ t('binary.ranking') }}</span>
+    <span class="card__sub">{{ t('binary.ranking_sub') }}</span>
+  </div>
+  <div class="card__body card__body--flush">
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width:52px">{{ t('binary.rank') }}</th>
+            <th>{{ t('nav.excipient') }}</th>
+            <th>{{ t('common.category') }}</th>
+            <th class="num">{{ t('binary.score') }}</th>
+            <th>{{ t('binary.band') }}</th>
+            <th>ICH M7</th>
+            <th class="num">{{ t('binary.species') }}</th>
+            <th class="num" title="{{ t('binary.mole_ratio_hint') }}">{{ t('binary.mole_ratio') }}</th>
+            <th>{{ t('binary.mechanisms') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for p in run.pairs %}
+          <tr class="{{ 'row--danger' if p.risk_band == 'high' else ('row--warn' if p.risk_band == 'moderate' else ('row--ok' if p.risk_band == 'none' else '')) }}">
+            <td class="num">{{ loop.index }}</td>
+            <td><b>{{ p.excipient_name }}</b></td>
+            <td class="small muted">{{ opt(p.category) or '—' }}</td>
+            <td class="num">
+              <b>{{ p.risk_score|fmt(1) }}</b>
+              <div style="height:4px;background:var(--n-200);border-radius:2px;margin-top:3px">
+                <div style="height:100%;border-radius:2px;width:{{ p.risk_score }}%;
+                            background:var(--{{ 'danger' if p.risk_band=='high' else ('warn' if p.risk_band=='moderate' else 'info') }}-500)"></div>
+              </div>
+            </td>
+            <td><span class="badge badge--{{ bands.get(p.risk_band,'muted') }}">{{ band_label.get(p.risk_band) }}</span></td>
+            <td>{{ ui.m7_badge(p.worst_m7_class) }}</td>
+            <td class="num">
+              {{ p.hit_count or '—' }}
+              {%- if p.collapsed_total %}<span class="muted small">+{{ p.collapsed_total }}</span>{% endif %}
+            </td>
+            <td class="num" title="{{ p.ratio_note }}">
+              {% if p.mole_ratio %}{{ p.mole_ratio|fmt(2) }}
+              {% else %}<span class="muted">{{ t('binary.no_mw') }}</span>{% endif %}
+            </td>
+            <td class="small">
+              {% for m in p.mechanisms %}<span class="badge badge--muted">{{ m }}</span> {% endfor %}
+              {% if not p.mechanisms %}<span class="muted">—</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card__foot">
+    {{ t('binary.score_note')|safe }}
+    <div style="margin-top:.5rem">{{ t('binary.polymer_note') }}</div>
+    <div style="margin-top:.5rem">{{ t('binary.collapsed_note') }}</div>
+  </div>
+</div>
+
+
+{# ---- 히트맵 ---- #}
+{% if run.heatmap and run.heatmap.rows %}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">🗺️ {{ t('binary.heatmap') }}</span>
+    <span class="card__sub">{{ t('binary.heatmap_sub') }}</span>
+  </div>
+  <div class="card__body card__body--flush">
+    <div class="table-wrap">
+      <table class="table table--compact heatmap">
+        <thead>
+          <tr>
+            <th>{{ t('nav.excipient') }}</th>
+            {% for col in run.heatmap.columns %}<th class="num">{{ col.label }}</th>{% endfor %}
+            <th class="num">{{ t('common.count_suffix') or 'Total' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for row in run.heatmap.rows %}
+          <tr>
+            <td>{{ row.excipient_name }}</td>
+            {% for col in run.heatmap.columns %}
+              {% set n = row.counts[col.key] %}
+              <td class="num hm" data-n="{{ n }}">{{ n if n else '·' }}</td>
+            {% endfor %}
+            <td class="num"><b>{{ row.total or '·' }}</b></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+{# ---- 이상 없는 조합 ---- #}
+{% set clean_pairs = run.pairs | rejectattr('has_interaction') | list %}
+{% if clean_pairs %}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">✅ {{ t('binary.clean_title') }}</span>
+    <span class="card__spacer"></span>
+    <span class="badge badge--ok">{{ clean_pairs|length }}</span>
+  </div>
+  <div class="card__body">
+    <div class="chip-row">
+      {% for p in clean_pairs %}
+      <span class="chip" style="background:var(--ok-50);border-color:var(--ok-200);color:var(--ok-800)">
+        {{ p.excipient_name }}
+      </span>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card__foot">{{ t('binary.clean_note')|safe }}</div>
+</div>
+{% endif %}
+
+
+{# ---- 쌍별 상세 ---- #}
+{% for p in run.pairs if p.has_interaction %}
+<details class="acc">
+  <summary>
+    <span class="badge badge--{{ bands.get(p.risk_band,'muted') }}">{{ band_label.get(p.risk_band) }}</span>
+    &nbsp;<b>{{ p.excipient_name }}</b>
+    &nbsp;<span class="muted small">{{ p.hit_count }} {{ t('binary.species') }}
+      {%- if p.collapsed_total %} (+{{ p.collapsed_total }} {{ t('binary.collapsed') }}){% endif %} ·
+      {{ t('binary.score') }} {{ p.risk_score|fmt(1) }}</span>
+  </summary>
+  <div class="acc__body">
+    <div class="struct-grid">
+      {% for hit in p.hits %}
+      {% set risk = hit.get('risk_class') or 'Matrix' %}
+      <div class="struct-card">
+        <div class="struct-card__img">{{ ui.struct_img(hit.get('smiles'), '280x200', risk) }}</div>
+        <div class="struct-card__body">
+          <div class="struct-card__badges" style="margin:0 0 .4rem">
+            <span class="badge badge--{{ 'danger' if risk in ['NDSRI','NDMA'] else 'info' }}">{{ risk }}</span>
+            {% if hit.get('m7_hint_text') %}
+              <span class="badge badge--{{ hit.get('m7_hint_tone', 'muted') }}"
+                    title="{{ t('excipient.hint_class') }}">{{ opt(hit.get('m7_hint_text')) }}</span>
+            {% endif %}
+          </div>
+          <div class="struct-card__title">
+            {{ opt(hit.get('nitrosamine_label') or hit.get('impurity_type') or 'Impurity') }}
+          </div>
+          <div class="struct-card__meta">
+            {% if hit.get('rule_name') %}{{ t('excipient.rule') }} · {{ opt(hit.get('rule_name')) }}<br>{% endif %}
+            {% if hit.get('nitrite_exposure') %}{{ t('excipient.nitrite_exposure') }} · {{ opt(hit.get('nitrite_exposure')) }}{% endif %}
+          </div>
+          {% if hit.get('alpha_hydrogen_present') is not none %}
+          <div class="struct-card__badges">
+            {% if hit.get('alpha_hydrogen_present') %}
+              <span class="badge badge--warn">{{ t('excipient.alpha_h_present') }}</span>
+            {% else %}
+              <span class="badge badge--ok">{{ t('excipient.alpha_h_absent') }}</span>
+            {% endif %}
+          </div>
+          {% endif %}
+          <div class="struct-card__smiles">{{ hit.get('smiles') }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</details>
+{% endfor %}
+
+{{ ui.banner('info', t('binary.dedup_fix'), t('binary.dedup_fix_text')) }}
+
+{% endif %}
+
+
+{# ====================== 매트릭스 결과 ====================== #}
+{% if run and run.mode == 'matrix' and run.hits %}
+<a id="result"></a>
+
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">🧪 {{ t('excipient.results') }}</span>
+    <span class="card__sub">{{ t('binary.mode_matrix') }}</span>
+    <span class="card__spacer"></span>
+    <a class="btn btn--sm btn--danger" href="{{ url_for('reports.excipient_download', fmt='pdf') }}">📕 PDF</a>
+    <a class="btn btn--sm btn--ok"     href="{{ url_for('reports.excipient_download', fmt='xlsx') }}">📊 Excel</a>
+    <a class="btn btn--sm"             href="{{ url_for('reports.excipient_download', fmt='txt') }}">📄 TXT</a>
+    <a class="btn btn--sm"             href="{{ url_for('reports.excipient_download', fmt='json') }}">📋 JSON</a>
+  </div>
+
+  <div class="card__body">
+    <div class="metrics" style="margin-bottom:1.15rem">
+      {{ ui.metric(t('excipient.total'), run.hits|length, t('common.count_suffix')) }}
+      {{ ui.metric('Matrix', run.counts.get('Matrix', 0), t('common.count_suffix')) }}
+      {{ ui.metric('NDSRI', run.counts.get('NDSRI', 0), t('common.count_suffix'),
+                   tone='danger' if run.counts.get('NDSRI') else None) }}
+      {{ ui.metric('NDMA', run.counts.get('NDMA', 0), t('common.count_suffix'),
+                   tone='danger' if run.counts.get('NDMA') else None) }}
+    </div>
+
+    {% if run.amines %}
+    <div class="row row--tight" style="margin-bottom:1rem;align-items:center">
+      <span class="small muted">{{ t('excipient.amine_sites') }}</span>
+      <span class="badge">{{ t('excipient.secondary') }} {{ run.amines.secondary }}</span>
+      <span class="badge">{{ t('excipient.tertiary') }} {{ run.amines.tertiary }}</span>
+      {% if run.amines.nitrosatable %}
+        <span class="badge badge--danger">{{ t('excipient.nitrosatable') }}</span>
+      {% else %}
+        <span class="badge badge--ok">{{ t('excipient.not_nitrosatable') }}</span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card__body card__body--flush">
+    <div class="struct-grid" style="padding:0 1.15rem 1.15rem">
+      {% for hit in run.hits %}
+      {% set risk = hit.get('risk_class') or 'Matrix' %}
+      <div class="struct-card">
+        <div class="struct-card__img">{{ ui.struct_img(hit.get('smiles'), '280x200', risk) }}</div>
+        <div class="struct-card__body">
+          <div class="struct-card__badges" style="margin:0 0 .4rem">
+            <span class="badge badge--{{ 'danger' if risk in ['NDSRI','NDMA'] else 'info' }}">{{ risk }}</span>
+            {% if hit.get('m7_hint_text') %}
+              <span class="badge badge--{{ hit.get('m7_hint_tone', 'muted') }}"
+                    title="{{ t('excipient.hint_class') }}">{{ opt(hit.get('m7_hint_text')) }}</span>
+            {% endif %}
+          </div>
+          <div class="struct-card__title">
+            {{ opt(hit.get('nitrosamine_label') or hit.get('impurity_type') or 'Impurity') }}
+          </div>
+          <div class="struct-card__meta">
+            <b>{{ opt(hit.get('excipient_name')) }}</b>
+            {% if hit.get('category') %}<br>{{ hit.get('category') }}{% endif %}
+            {% if hit.get('rule_name') %}<br>{{ t('excipient.rule') }} · {{ opt(hit.get('rule_name')) }}{% endif %}
+            {% if hit.get('nitrite_exposure') %}<br>{{ t('excipient.nitrite_exposure') }} · {{ opt(hit.get('nitrite_exposure')) }}{% endif %}
+          </div>
+          {% if hit.get('alpha_hydrogen_present') is not none %}
+          <div class="struct-card__badges">
+            {% if hit.get('alpha_hydrogen_present') %}
+              <span class="badge badge--warn">{{ t('excipient.alpha_h_present') }}</span>
+            {% else %}
+              <span class="badge badge--ok">{{ t('excipient.alpha_h_absent') }}</span>
+            {% endif %}
+          </div>
+          {% endif %}
+          {% if hit.get('kinetics_comment') %}
+            <p class="small muted" style="margin:.4rem 0 0">{{ opt(hit.get('kinetics_comment'))|shorten(90) }}</p>
+          {% endif %}
+          <div class="struct-card__smiles">{{ hit.get('smiles') }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card__foot">{{ t('excipient.alpha_h_note') }}</div>
+</div>
+
+{{ ui.banner('warn', t('binary.dedup_fix'), t('binary.dedup_fix_text')) }}
+
+{% elif run and run.mode == 'matrix' %}
+  <div class="card"><div class="card__body">
+    {{ ui.empty_state('📭', t('excipient.empty_title'), t('excipient.empty_text')) }}
+  </div></div>
+{% endif %}
+
+{% endblock %}

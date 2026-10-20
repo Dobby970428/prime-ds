@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block topbar_actions %}
+  {% if sub or sim %}
+  <form method="post" action="{{ url_for('search.clear_structure') }}">
+    <button class="btn btn--sm btn--ghost" type="submit">{{ t('common.clear_results') }}</button>
+  </form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<form method="post" data-require-canvas="search_query">
+  <div class="card">
+    <div class="card__head">
+      <span class="card__title">🧩 {{ t('search.structure_title') }}</span>
+      <span class="card__sub">{{ t('search.structure_subtitle') }}</span>
+    </div>
+    <div class="card__body">
+      <div class="row" style="gap:1.15rem;flex-wrap:nowrap;align-items:stretch">
+
+        <div style="flex:1 1 380px;min-width:300px">
+          {{ ui.editor('search_query', t('search.query_structure'), 'Query', 340, canvas.get('search_query','')) }}
+        </div>
+
+        <div style="flex:1 1 320px;min-width:280px" class="stack">
+          <div class="field">
+            <span class="field__label">{{ t('search.mode') }}</span>
+            <label class="check">
+              <input type="radio" name="mode" value="fast" checked
+                     style="width:15px;height:15px;accent-color:var(--brand-600)">
+              <span class="check__label">⚡ {{ t('search.mode_fast')|safe }}</span>
+            </label>
+            <label class="check" style="margin-top:.35rem">
+              <input type="radio" name="mode" value="deep"
+                     style="width:15px;height:15px;accent-color:var(--brand-600)">
+              <span class="check__label">🔬 {{ t('search.mode_deep')|safe }}</span>
+            </label>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn--primary" type="submit"
+                    formaction="{{ url_for('search.run_substructure') }}"
+                    onclick="PrimeUI.overlay(true,{{ t('search.busy_substructure')|tojson }},{{ t('search.busy_substructure_sub')|tojson }})">
+              🔍 {{ t('search.run_substructure') }}
+            </button>
+            <button class="btn btn--teal" type="submit"
+                    formaction="{{ url_for('search.run_similarity') }}"
+                    onclick="PrimeUI.overlay(true,{{ t('search.busy_similarity')|tojson }},{{ t('search.busy_similarity_sub')|tojson }})">
+              🎯 {{ t('search.run_similarity') }}
+            </button>
+          </div>
+
+          {% if history %}
+          <details class="acc" style="margin:0">
+            <summary>🕐 {{ t('search.history') }} ({{ history|length }})</summary>
+            <div class="acc__body">
+              <div class="stack">
+              {% for h in history %}
+                <div class="row row--tight" style="align-items:center">
+                  <span class="smi grow" title="{{ h.smiles }}">{{ h.smiles|shorten(38) }}</span>
+                  <span class="small muted nowrap">{{ h.at }}</span>
+                  <button type="button" class="btn btn--sm btn--ghost"
+                          onclick="PrimeEditors.load('search_query', {{ h.smiles|tojson }})">
+                    {{ t('search.load') }}
+                  </button>
+                </div>
+              {% endfor %}
+              </div>
+              <form method="post" action="{{ url_for('search.clear_history') }}" style="margin-top:.6rem">
+                <button class="btn btn--sm btn--ghost" type="submit">{{ t('search.clear_history') }}</button>
+              </form>
+            </div>
+          </details>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+
+{# ---- 부분구조 결과 ---- #}
+{% if sub %}
+<a id="sub"></a>
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">🔍 {{ t('search.substructure_results') }}</span>
+    <span class="card__sub">
+      {{ t('search.mode_deep_short') if sub.mode == 'deep' else t('search.mode_fast_short') }}
+    </span>
+    <span class="card__spacer"></span>
+    <span class="badge badge--info">{{ sub.hits|length }}</span>
+  </div>
+  <div class="card__body card__body--flush">
+    {% if sub.error %}
+      <div style="padding:1rem">{{ ui.banner('warn', t('search.problem'), sub.error) }}</div>
+    {% endif %}
+
+    {% if sub.hits %}
+    <div class="table-wrap" style="max-height:520px;overflow:auto">
+      <table class="table table--compact">
+        <thead><tr>
+          <th>{{ t('search.col_drug') }}</th><th>{{ t('search.col_compound') }}</th>
+          <th>CID</th><th>{{ t('common.smiles') }}</th>
+        </tr></thead>
+        <tbody>
+        {% for hit in sub.hits %}
+          <tr>
+            <td>{{ hit.get('drug_name') or '—' }}</td>
+            <td>{{ hit.get('compound_name') or '—' }}</td>
+            <td class="num">{{ hit.get('compound_cid') or '—' }}</td>
+            <td>{{ ui.smiles_cell(hit.get('canon_smiles') or '', 46) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% elif not sub.error %}
+      <div style="padding:1rem">
+        {{ ui.empty_state('🔍', t('search.substructure_empty'), t('search.substructure_empty_text')) }}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+
+{# ---- 유사도 결과 ---- #}
+{% if sim %}
+<a id="sim"></a>
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">🎯 {{ t('search.similarity_results') }}</span>
+    <span class="card__sub">{{ t('search.similarity_sub') }}</span>
+  </div>
+  <div class="card__body">
+    {% if sim.error %}{{ ui.banner('warn', t('search.problem'), sim.error) }}{% endif %}
+
+    {% if sim.hits %}
+    <div class="struct-grid">
+      {% for hit in sim.hits %}
+      <div class="struct-card">
+        <div class="struct-card__img">
+          {{ ui.struct_img(hit.get('canon_smiles'), prefs.img_size, hit.get('drug_name','')) }}
+        </div>
+        <div class="struct-card__body">
+          <div class="struct-card__badges" style="margin:0 0 .4rem">
+            <span class="badge badge--info">#{{ hit.get('rank') }}</span>
+            <span class="badge badge--{{ 'ok' if (hit.get('tanimoto') or 0) >= 0.7 else 'warn' }}">
+              Tanimoto {{ hit.get('tanimoto_pct') }}%
+            </span>
+          </div>
+          <div class="struct-card__title">{{ hit.get('drug_name') or t('readacross.unnamed') }}</div>
+          <div class="struct-card__meta">
+            {% if hit.get('compound_name') %}{{ hit.get('compound_name') }}<br>{% endif %}
+            {% if hit.get('compound_cid') %}CID {{ hit.get('compound_cid') }}{% endif %}
+          </div>
+          {% if prefs.show_smiles %}
+            <div class="struct-card__smiles">{{ hit.get('canon_smiles') }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% elif not sim.error %}
+      {{ ui.empty_state('🎯', t('search.similarity_empty'), t('search.similarity_empty_text')) }}
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content_class %}content--narrow{% endblock %}
+
+{% block content %}
+
+<form method="post">
+  <input type="hidden" name="action" value="display">
+  <div class="card">
+    <div class="card__head">
+      <span class="card__title">🎛️ {{ t('settings.display') }}</span>
+      <span class="card__spacer"></span>
+      <button class="btn btn--primary btn--sm" type="submit">{{ t('common.save') }}</button>
+    </div>
+    <div class="card__body">
+      <div class="form-grid">
+        <div class="field">
+          <label class="field__label" for="max_show">{{ t('settings.max_show') }}</label>
+          <div class="range-row">
+            <input class="input" type="range" id="max_show" name="max_show"
+                   min="4" max="36" step="4" value="{{ prefs.max_show }}"
+                   data-output="out_max_show">
+            <output id="out_max_show"></output>
+          </div>
+          <div class="field__hint">{{ t('settings.max_show_hint') }}</div>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="cols">{{ t('settings.cols') }}</label>
+          <select class="select" id="cols" name="cols">
+            {% for n in [2,3,4] %}
+            <option value="{{ n }}" {{ 'selected' if prefs.cols == n }}>{{ n }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="img_size">{{ t('settings.img_size') }}</label>
+          <select class="select" id="img_size" name="img_size">
+            {% for s in ['250x250','300x300','400x400'] %}
+            <option value="{{ s }}" {{ 'selected' if prefs.img_size == s }}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <span class="field__label">{{ t('settings.show_smiles') }}</span>
+          <label class="check">
+            <input type="checkbox" name="show_smiles" {{ 'checked' if prefs.show_smiles }}>
+            <span class="check__label">{{ t('settings.show_smiles_label') }}</span>
+          </label>
+        </div>
+
+        <div class="field">
+          <span class="field__label">{{ t('settings.language') }}</span>
+          <div class="btn-row">
+            {% for code, name in languages.items() %}
+            <a class="btn btn--sm {{ 'btn--primary' if code == lang }}"
+               href="{{ url_for('main.set_language', code=code) }}">{{ name }}</a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">🗂️ {{ t('settings.index') }}</span>
+    <span class="card__sub">{{ t('settings.index_sub') }}</span>
+  </div>
+  <div class="card__body">
+
+    <div class="metrics" style="margin-bottom:1.15rem">
+      {{ ui.metric(t('settings.drug_index'), '{:,}'.format(index_status.get('indexed', 0))) }}
+      {{ ui.metric(t('settings.primary_fp'), '{:,}'.format(index_status.get('primary', 0))) }}
+      {{ ui.metric(t('settings.exact_index'), '{:,}'.format(index_status.get('compounds', 0)),
+                   tone='warn' if not index_status.get('compounds') else None) }}
+      {{ ui.metric(t('settings.substruct_index'),
+                   t('settings.ready') if index_status.get('substruct_ready') else t('settings.absent'),
+                   tone='ok' if index_status.get('substruct_ready') else 'muted') }}
+    </div>
+
+    {% if not index_status.get('compounds') %}
+      {{ ui.banner('warn', t('settings.exact_empty_title'), t('settings.exact_empty_text')) }}
+    {% endif %}
+
+    <div class="btn-row">
+      {% for act, label_key, note_key, tone in [
+        ('reindex',        'settings.reindex',         'settings.reindex_note',         'primary'),
+        ('build_primary',  'settings.build_primary',   'settings.build_primary_note',   ''),
+        ('build_substruct','settings.build_substruct', 'settings.build_substruct_note', ''),
+        ('build_compound', 'settings.build_compound',  'settings.build_compound_note',  ''),
+      ] %}
+      <form method="post" data-busy="{{ t('settings.index_busy') }}" data-busy-text="{{ t(note_key) }}">
+        <input type="hidden" name="action" value="{{ act }}">
+        <button class="btn {{ 'btn--' ~ tone if tone else '' }}" type="submit"
+                title="{{ t(note_key) }}">{{ t(label_key) }}</button>
+      </form>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<div class="card">
+  <div class="card__head"><span class="card__title">🧹 {{ t('settings.session') }}</span></div>
+  <div class="card__body">
+    <p class="small muted">{{ t('settings.session_note') }}</p>
+    <form method="post" onsubmit="return confirm({{ t('settings.reset_confirm')|tojson }})">
+      <input type="hidden" name="action" value="reset_session">
+      <button class="btn btn--danger" type="submit">{{ t('settings.reset_session') }}</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

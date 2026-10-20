@@ -1,0 +1,75 @@
+cff-version: 1.2.0
+title: >-
+  PRIME-DS: Predictive Risk & Impurity Modeling Engine for Drug
+  Substance
+message: >-
+  If you use this software, please cite both the software (this
+  file) and the article listed under preferred-citation.
+type: software
+license: MIT
+version: 1.0.0
+# ↓ 공개 직후 채우십시오
+date-released: "2026-00-00"
+repository-code: "https://github.com/ACCOUNT/prime-ds"
+doi: "10.5281/zenodo.XXXXXXX"
+abstract: >-
+  An open-source in silico platform that generates plausible
+  degradation and process-related impurities from a synthetic route
+  or a formulation context and triages each generated structure
+  under ICH M7(R2) with a four-layer assessment: an experimental
+  record index, 23 structural alerts with four metabolic-fragment
+  patterns, an ECFP4 random-forest (Q)SAR model, and read-across
+  arbitration, combined under upgrade-only consensus.
+keywords:
+  - ICH M7
+  - mutagenic impurities
+  - nitrosamines
+  - QSAR
+  - structural alerts
+  - forced degradation
+  - drug-excipient compatibility
+  - RDKit
+authors:
+  - family-names: Ju
+    given-names: Hyun
+    affiliation: >-
+      Department of Biopharmaceutical Chemistry, Kookmin
+      University, Seoul 02707, Republic of Korea
+  - family-names: Gong
+    given-names: Seong-June
+    affiliation: >-
+      Department of Biopharmaceutical Chemistry, Kookmin
+      University, Seoul 02707, Republic of Korea
+  - family-names: Yu
+    given-names: Seo-Hyun
+    affiliation: >-
+      Department of Biopharmaceutical Chemistry, Kookmin
+      University, Seoul 02707, Republic of Korea
+  - family-names: Kim
+    given-names: Joo-Eun
+    affiliation: >-
+      Biopharmaceutical Chemistry Major, School of Applied
+      Chemistry, Kookmin University, Seoul 02707, Republic of Korea
+preferred-citation:
+  type: article
+  title: >-
+    PRIME-DS: An Integrated In Silico Platform for Predicting
+    Degradation and Process-Related Impurities in Drug Substance and
+    Drug Product Development and Supporting ICH M7 Mutagenicity Risk
+    Assessment
+  journal: Pharmaceutics
+  year: 2026
+  authors:
+    - family-names: Ju
+      given-names: Hyun
+    - family-names: Gong
+      given-names: Seong-June
+    - family-names: Yu
+      given-names: Seo-Hyun
+    - family-names: Kim
+      given-names: Joo-Eun
+  # ↓ 게재 확정 후 채우십시오
+  volume: "00"
+  issue: "0"
+  start: 0
+  doi: "10.3390/pharmaceuticsXXXXXXXX"

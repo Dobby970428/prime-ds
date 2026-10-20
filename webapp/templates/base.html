@@ -1,0 +1,116 @@
+{% import "partials/macros.html" as ui with context %}
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ nav_title or 'PRIME-DS' }}{% endblock %} · PRIME-DS</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#129514;</text></svg>">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/prime.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <div class="sidebar__logo">
+        <span class="sidebar__logo-mark">🧪</span>
+        <span>PRIME-DS</span>
+      </div>
+      <div class="sidebar__tagline">{{ t('app.tagline')|safe }}</div>
+    </div>
+
+    <nav class="sidebar__nav">
+      <div class="sidebar__section">{{ t('nav.section.assessment') }}</div>
+      {{ ui.navlink('single.index',      '🔬', t('nav.single')) }}
+      {{ ui.navlink('process.index',     '🏭', t('nav.process')) }}
+      {{ ui.navlink('degradation.index', '🧬', t('nav.degradation')) }}
+      {{ ui.navlink('excipient.index',   '💊', t('nav.excipient')) }}
+
+      <div class="sidebar__section">{{ t('nav.section.search') }}</div>
+      {{ ui.navlink('search.drug',      '🔎', t('nav.drug_search')) }}
+      {{ ui.navlink('search.structure', '🧩', t('nav.structure_search')) }}
+
+      <div class="sidebar__section">{{ t('nav.section.tools') }}</div>
+      {{ ui.navlink('reports.index', '📄', t('nav.reports')) }}
+      {{ ui.navlink('main.settings', '⚙️', t('nav.settings')) }}
+      {{ ui.navlink('main.about',    'ℹ️', t('nav.about')) }}
+    </nav>
+
+    <div class="sidebar__foot">
+      <div class="sidebar__stat"><span>{{ t('nav.stat.indexed') }}</span><b>{{ '{:,}'.format(g_stats.indexed) }}</b></div>
+      <div class="sidebar__stat"><span>{{ t('nav.stat.empirical') }}</span><b>{{ '{:,}'.format(g_stats.empirical) }}</b></div>
+      <div class="sidebar__stat"><span>{{ t('nav.stat.excipients') }}</span><b>{{ g_stats.excipients }}</b></div>
+      <div style="margin-top:.5rem;opacity:.65">{{ t('app.guideline') }}</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn btn--ghost btn--sm navtoggle" id="navtoggle" type="button">☰</button>
+      <div>
+        <div class="topbar__title">{% block topbar_title %}{{ nav_title or 'PRIME-DS' }}{% endblock %}</div>
+        {% block topbar_sub %}{% if nav_sub %}<div class="topbar__sub">{{ nav_sub }}</div>{% endif %}{% endblock %}
+      </div>
+      <div class="topbar__spacer"></div>
+
+      {% block topbar_actions %}{% endblock %}
+
+      <div class="langswitch">
+        {% for code, name in languages.items() %}
+        <a class="langswitch__item{{ ' is-active' if code == lang else '' }}"
+           href="{{ url_for('main.set_language', code=code) }}">{{ code|upper }}</a>
+        {% endfor %}
+      </div>
+    </header>
+
+    <main class="content {% block content_class %}{% endblock %}">
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% if msgs %}
+          {% for cat, msg in msgs %}
+            {% set kind = cat if cat in ['info','ok','warn','danger'] else 'info' %}
+            {{ ui.banner(kind, msg) }}
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="pagefoot">{{ t('app.disclaimer') }}</footer>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="overlay__box">
+    <div class="spinner"></div>
+    <div class="overlay__title" id="overlay-title">{{ t('common.loading') }}</div>
+    <div class="overlay__text" id="overlay-text">{{ t('common.loading_sub') }}</div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+  window.PRIME = {
+    ketcherUrl: {{ g_ketcher_url|tojson }},
+    structureUrl: {{ url_for('api.structure_png')|tojson }},
+    lang: {{ lang|tojson }},
+    strings: {
+      empty:       {{ t('editor.empty')|tojson }},
+      saved:       {{ t('editor.saved')|tojson }},
+      placeholder: {{ t('editor.placeholder')|tojson }},
+      noPreview:   {{ t('editor.no_preview')|tojson }},
+      pasting:     {{ t('editor.pasting')|tojson }},
+      drawFirst:   {{ t('js.draw_first')|tojson }},
+      copied:      {{ t('common.copied')|tojson }},
+      copyFailed:  {{ t('js.copy_failed')|tojson }}
+    }
+  };
+</script>
+<script src="{{ url_for('static', filename='js/prime.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

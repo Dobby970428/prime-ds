@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">🔎 {{ t('search.drug_heading') }}</span>
+    <span class="card__sub">{{ t('search.drug_hint') }}</span>
+  </div>
+  <div class="card__body">
+    <form method="get" class="row" style="align-items:flex-end">
+      <div class="field grow" style="max-width:420px">
+        <label class="field__label" for="q">{{ t('search.drug_label') }}</label>
+        <input class="input" type="search" id="q" name="q" value="{{ query }}"
+               placeholder="metformin, acetaminophen, CID14219" autofocus>
+      </div>
+      <button class="btn btn--primary" type="submit">{{ t('common.search') }}</button>
+    </form>
+  </div>
+</div>
+
+{% if result %}
+  {% if result.error %}{{ ui.banner('warn', t('search.problem'), result.error) }}{% endif %}
+
+  <div class="card">
+    <div class="card__head">
+      <span class="card__title">{{ t('search.results') }}</span>
+      <span class="card__spacer"></span>
+      <span class="badge badge--info">{{ result.matches|length }}</span>
+    </div>
+    <div class="card__body card__body--flush">
+      {% if result.matches %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr>
+            <th>{{ t('search.col_drug') }}</th><th>{{ t('search.col_file') }}</th>
+            <th class="num">{{ t('search.col_score') }}</th><th></th>
+          </tr></thead>
+          <tbody>
+          {% for m in result.matches %}
+            <tr>
+              <td><b>{{ m.drug_name or t('readacross.unnamed') }}</b></td>
+              <td class="small muted">{{ m.file_name }}</td>
+              <td class="num">{{ m.score|fmt(1) if m.score is not none else '—' }}</td>
+              <td class="nowrap">
+                <a class="btn btn--sm {{ 'btn--primary' if m.path == pick else '' }}"
+                   href="{{ url_for('search.drug', q=query, pick=m.path, name=m.file_name) }}">
+                  {{ t('common.selected') if m.path == pick else t('common.open') }}
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <div style="padding:1rem">
+        {{ ui.empty_state('🔍', t('search.not_found'),
+             t('search.not_found_hangul') if result.has_hangul else t('search.not_found_text')) }}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
+{% if table and table.rows %}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">💊 {{ t('search.related') }}</span>
+    <span class="card__sub">
+      {{ table.file_name }} · {{ table.rows|length }} {{ t('search.of_total') }}
+      {{ '{:,}'.format(table.total) }} {{ t('search.rows') }}
+    </span>
+    <span class="card__spacer"></span>
+    <a class="btn btn--sm" href="{{ url_for('reports.drugdb_preview') }}">👁 {{ t('reports.preview') }}</a>
+    <a class="btn btn--sm btn--primary" href="{{ url_for('reports.drugdb_download', fmt='docx') }}">📝 Word</a>
+    <a class="btn btn--sm btn--danger"  href="{{ url_for('reports.drugdb_download', fmt='pdf') }}">📕 PDF</a>
+    <a class="btn btn--sm btn--ok"      href="{{ url_for('reports.drugdb_download', fmt='xlsx') }}">📊 Excel</a>
+  </div>
+  <div class="card__body card__body--flush">
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr>
+          <th>{{ t('common.name') }}</th><th>{{ t('common.smiles') }}</th>
+          <th class="num">LogP</th><th>ICH M7</th><th>{{ t('alerts.subtitle') }}</th>
+        </tr></thead>
+        <tbody>
+        {% for row in table.rows %}
+          <tr>
+            <td>{{ row.name or '—' }}{% if row.cid %}<div class="small muted">CID {{ row.cid }}</div>{% endif %}</td>
+            <td>{{ ui.smiles_cell(row.smiles, 40) }}</td>
+            <td class="num">{{ row.logp if row.logp is not none else '—' }}</td>
+            <td>{{ ui.m7_badge(row.m7_class) }}</td>
+            <td>
+              {% if row.alerts %}
+                {% for a in row.alerts %}<span class="badge badge--danger">{{ a|shorten(24) }}</span> {% endfor %}
+              {% else %}<span class="badge badge--ok">{{ t('common.none') }}</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card__body" style="border-top:1px solid var(--n-200)">
+    <div class="struct-grid">
+      {% for row in table.rows %}
+      <div class="struct-card">
+        <div class="struct-card__img">
+          {{ ui.struct_img(row.smiles, prefs.img_size, row.name,
+                           row.highlight_atoms|join(',') if row.highlight_atoms else None) }}
+        </div>
+        <div class="struct-card__body">
+          <div class="struct-card__title">{{ row.name or 'CID ' ~ (row.cid or '?') }}</div>
+          <div class="struct-card__badges">{{ ui.m7_badge(row.m7_class) }}</div>
+          {% if prefs.show_smiles %}<div class="struct-card__smiles">{{ row.smiles }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

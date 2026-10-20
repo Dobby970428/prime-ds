@@ -1,0 +1,92 @@
+# ─────────────────────────────────────────────────────────────────────
+#  PRIME-DS — 공개 저장소 제외 목록
+#
+#  이 파일은 «실수로 올라가면 안 되는 것» 을 막는 안전장치입니다.
+#  라이선스·기밀 사유로 반드시 제외해야 하는 항목에는 이유를 적어 두었습니다.
+#  항목을 지우기 전에 그 이유를 반드시 읽어 주십시오.
+# ─────────────────────────────────────────────────────────────────────
+
+# ── ★ 라이선스 — 올리면 안 되는 것 ───────────────────────────────────
+
+# Toxtree 배포본을 압축 해제한 사본. GPL-2.0 코드 재배포가 됩니다.
+# 파이썬 코드 어디서도 import 하지 않습니다.
+toxtree_sources/
+
+# Derek Nexus · Sarah Nexus 의 화합물별 출력. Lhasa 라이선스 산출물이고,
+# 원고가 «aggregate 만 공개, 화합물별은 교신저자 요청» 이라고 명시했습니다.
+논문자료/02_검증결과/external_tools/scaffold_derek.tsv
+논문자료/02_검증결과/external_tools/scaffold_sarah.tsv
+논문자료/02_검증결과/external_tools/Data Export*.tsv
+논문자료/02_검증결과/external_tools/batchLog.log
+
+# Ames 데이터셋 — 상위 컴파일러(TDC)가 라이선스를 명시하지 않았습니다.
+# 구조·라벨 대신 data/ames_split_manifest.csv 만 공개합니다.
+논문자료/01_데이터셋/ames.csv
+논문자료/01_데이터셋/ames_train.csv
+논문자료/01_데이터셋/ames_validation.csv
+논문자료/02_검증결과/external_tools/ames_*_key.csv
+논문자료/02_검증결과/external_tools/ames_*_blinded.*
+
+# 위 데이터셋에서 파생된 것
+models/
+cache/
+논문자료/04_모델/
+
+# 출판사 저작물 (논문 PDF 원문) 과 빌드된 원고 PDF
+*.pdf
+
+# ── 용량·무관 ────────────────────────────────────────────────────────
+
+# PubChem 기록 캐시 16,823개와 그 색인. 판정에 쓰이지 않고 Search 모듈 전용.
+data/CID*
+data/*/
+drug_index.db
+drug_index.db-*
+
+# 옛 Streamlit 앱 (자체 venv 포함)
+RxnMetrics/
+
+# 논문 작업 산출물 전체 — 저장소가 약속한 것은 «플랫폼 소스 + 분석 스크립트»
+# 이고, 분석 스크립트는 루트의 s1~s26 입니다. 06_재현스크립트\ 는 그 스크립트의
+# 2026-08 시점 옛 사본이므로 함께 제외합니다.
+#   주의 — git 은 제외된 디렉터리 안으로 내려가지 않습니다. 이 폴더에서 일부만
+#   올리려면 «논문자료/*» 로 바꾼 뒤 «!논문자료/<하위폴더>/» 를 더해야 합니다.
+논문자료/
+
+# 백업
+_archive/
+_backup*/
+_backup*.zip
+*.orig3rd
+_rename_map.json
+_undo_rename.py
+_selftest_*
+
+# 배포 빌드 산출물
+_dist/
+
+# ── 런타임·캐시 ──────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.streamlit/
+.streamlit.zip
+.prime_process_cache/
+*.prime_process_verification_fp_cache.pkl
+.rxnmetrics_cache/
+
+# 실행하면 다시 만들어지는 산출물
+reports/
+supplementary/
+figures/
+
+# ── OS · 편집기 ──────────────────────────────────────────────────────
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp
+.idea/
+.vscode/

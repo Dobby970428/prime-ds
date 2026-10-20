@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+
+{% block topbar_actions %}
+  {% if run %}
+  <form method="post" action="{{ url_for('process.clear') }}">
+    <button class="btn btn--sm btn--ghost" type="submit">{{ t('common.clear_results') }}</button>
+  </form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<form method="post" action="{{ url_for('process.run') }}"
+      data-busy="{{ t('process.busy') }}"
+      data-busy-text="{{ t('process.busy_sub') }}">
+
+  {# ---- 구조 4개 ---- #}
+  <div class="card">
+    <div class="card__head">
+      <span class="card__title">🏭 {{ t('process.input_title') }}</span>
+      <span class="card__sub">{{ t('process.input_hint') }}</span>
+      <span class="card__spacer"></span>
+      <button class="btn btn--danger btn--lg" type="submit">⚙️ {{ t('process.run') }}</button>
+    </div>
+    <div class="card__body">
+      <div class="editor-grid">
+        {{ ui.editor('reactant_1', t('process.reactant1'), 'Reactant 1', 300, canvas.get('reactant_1','')) }}
+        {{ ui.editor('reactant_2', t('process.reactant2'), 'Reactant 2', 300, canvas.get('reactant_2','')) }}
+        {{ ui.editor('reagent',    t('process.reagent'),   'Reagent',    300, canvas.get('reagent','')) }}
+        {{ ui.editor('product',    t('process.product'),   'Product',    300, canvas.get('product','')) }}
+      </div>
+
+      <details class="acc" style="margin-top:1rem">
+        <summary>🎯 {{ t('process.reference_toggle') }}</summary>
+        <div class="acc__body">
+          <div style="max-width:420px">
+            {{ ui.editor('reference_drug', t('single.reference'), 'Reference', 300, canvas.get('reference_drug','')) }}
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  {# ---- 공정 조건 ---- #}
+  <div class="card">
+    <div class="card__head">
+      <span class="card__title">🧪 {{ t('process.conditions') }}</span>
+      <span class="card__sub">{{ options.master_count }} {{ t('process.master_reagents') }}</span>
+    </div>
+    <div class="card__body">
+
+      <div class="form-grid" style="margin-bottom:1.15rem">
+        <div class="field field--wide">
+          <label class="field__label" for="stress_condition">{{ t('process.stress') }}</label>
+          <select class="select" id="stress_condition" name="stress_condition">
+            {% for s in options.stress %}
+            <option value="{{ s }}" {{ 'selected' if form.get('stress_condition') == s }}>{{ opt(s) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field field--wide">
+          <label class="field__label" for="name_reaction">🔬 {{ t('process.name_reaction') }}</label>
+          <select class="select" id="name_reaction" name="name_reaction">
+            {% for n in options.name_reactions %}
+            <option value="{{ n }}" {{ 'selected' if form.get('name_reaction') == n }}>{{ opt(n) }}</option>
+            {% endfor %}
+          </select>
+          <div class="field__hint">{{ t('process.name_reaction_hint') }}</div>
+        </div>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:1.15rem">
+        {% for cat, key, icon in [
+            ('Solvents','process.solvents','💧'), ('Acids','process.acids','🧪'),
+            ('Bases','process.bases','⚗️'), ('Catalysts','process.catalysts','⚡')] %}
+        <div class="field">
+          <label class="field__label" for="reg_{{ cat }}">{{ icon }} {{ t(key)|safe }}</label>
+          <select class="select" id="reg_{{ cat }}" name="{{ cat|lower }}" multiple size="5">
+            {% for item in options.registry.get(cat, []) %}
+            <option value="{{ item.id }}"
+                    {{ 'selected' if item.id in form.get(cat|lower, []) }}>{{ item.label }}</option>
+            {% endfor %}
+          </select>
+          <div class="field__hint">{{ t('process.multi_hint') }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label class="field__label" for="temperature_c">{{ t('process.temperature') }}</label>
+          <input class="input" type="number" id="temperature_c" name="temperature_c"
+                 min="-80" max="300" step="0.5" value="{{ form.get('temperature_c', 25.0) }}">
+        </div>
+        <div class="field">
+          <label class="field__label" for="reaction_time_h">{{ t('process.time') }}</label>
+          <input class="input" type="number" id="reaction_time_h" name="reaction_time_h"
+                 min="0" max="168" step="0.1" value="{{ form.get('reaction_time_h', 1.0) }}">
+        </div>
+        <div class="field">
+          <label class="field__label" for="ph">pH</label>
+          <div class="range-row">
+            <input type="range" id="ph" name="ph" min="0" max="14" step="0.1"
+                   value="{{ form.get('ph', 7.0) }}" data-output="out_ph">
+            <output id="out_ph"></output>
+          </div>
+        </div>
+        <div class="field">
+          <span class="field__label">{{ t('process.nitrite') }}</span>
+          <label class="check">
+            <input type="checkbox" name="nitrite" {{ 'checked' if form.get('nitrite') }}>
+            <span class="check__label">
+              {{ t('process.nitrite_label') }}
+              <div class="field__hint">{{ t('process.nitrite_hint') }}</div>
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+
+{# ====================== 결과 ====================== #}
+{% if run %}
+<a id="result"></a>
+
+{{ ui.banner('warn', t('process.dual_warning_title'), t('process.dual_warning_text')) }}
+
+
+{# ---- 목적물 프로필 ---- #}
+{% if run.hybrid.product_risk %}
+{% set pr = run.hybrid.product_risk %}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">🎯 {{ t('process.target_profile') }}</span>
+    <span class="card__sub">{{ pr.formula }}</span>
+  </div>
+  <div class="card__body">
+    <div class="metrics">
+      {{ ui.metric(t('process.vulnerable_patterns'), pr.labels|length, t('common.count_suffix'),
+                   tone='warn' if pr.labels else 'ok') }}
+      {{ ui.metric(t('common.mw'), pr.mw|fmt(2), 'g/mol') }}
+      {{ ui.metric('LogP', pr.logp|fmt(2)) }}
+      {{ ui.metric('TPSA', pr.tpsa|fmt(1)) }}
+      {{ ui.metric(t('process.rotatable'), pr.rotatable_bonds) }}
+    </div>
+    {% if pr.labels %}
+    <div class="chip-row" style="margin-top:.95rem">
+      {% for label in pr.labels %}<span class="chip">{{ opt(label) }}</span>{% endfor %}
+    </div>
+    {% endif %}
+    {% if pr.summary %}<p class="small muted" style="margin-top:.7rem">{{ opt(pr.summary) }}</p>{% endif %}
+  </div>
+</div>
+{% endif %}
+
+
+{# ---- 경로 A ---- #}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">{{ t('process.path_a') }}</span>
+    <span class="card__sub">{{ t('process.path_a_sub') }}</span>
+    <span class="card__spacer"></span>
+    <span class="badge badge--ok">📌 {{ run.hybrid.validated_count }}</span>
+    <span class="badge badge--warn">🧪 {{ run.hybrid.theoretical_count }}</span>
+    {% if run.hybrid.nitrite_active %}
+      <span class="badge badge--danger">{{ t('process.nitrite_on') }}</span>
+    {% endif %}
+  </div>
+
+  <div class="card__body card__body--flush">
+    {% if run.hybrid.rows %}
+    <div class="table-wrap" style="max-height:600px;overflow:auto">
+      <table class="table table--compact">
+        <thead>
+          <tr>
+            <th>{{ t('process.col_type') }}</th><th>{{ t('process.col_verdict') }}</th>
+            <th>{{ t('process.col_route') }}</th><th>ICH M7</th>
+            <th>{{ t('process.col_alert') }}</th><th>PubChem</th>
+            <th class="num">LogP</th><th>{{ t('common.smiles') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for row in run.hybrid.rows %}
+          <tr class="{{ 'row--danger' if (row.m7_class or 9) <= 2 else ('row--warn' if (row.m7_class or 9) == 3 else '') }}">
+            <td class="small">{{ opt(row.category_label) }}</td>
+            <td>
+              {% if row.is_validated %}
+                <span class="badge badge--ok">📌 {{ t('badge.validated_short') }}</span>
+              {% else %}
+                <span class="badge badge--warn">🧪 {{ t('badge.theoretical_short') }}</span>
+              {% endif %}
+            </td>
+            <td class="small">{{ opt(row.rule_label)|shorten(30) }}</td>
+            <td>{{ ui.m7_badge(row.m7_class) }}</td>
+            <td class="small">
+              {% if row.ashby_tennant and row.ashby_tennant not in ['없음', 'None'] %}
+                <span class="badge badge--danger">{{ opt(row.ashby_tennant)|shorten(24) }}</span>
+              {% else %}<span class="muted">—</span>{% endif %}
+            </td>
+            <td class="small">
+              {% if row.pubchem_link %}
+                <a href="{{ row.pubchem_link }}" target="_blank" rel="noopener">CID {{ row.pubchem_cid }}</a>
+              {% else %}<span class="muted">{{ opt(row.pubchem_status) or '—' }}</span>{% endif %}
+            </td>
+            <td class="num">{{ row.logp or '—' }}</td>
+            <td>{{ ui.smiles_cell(row.smiles, 34) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div style="padding:1rem">{{ ui.empty_state('📭', t('process.no_impurities')) }}</div>
+    {% endif %}
+  </div>
+
+  {% if run.hybrid.rows %}
+  <div class="card__body" style="border-top:1px solid var(--n-200)">
+    <div class="struct-grid">
+      {% for row in run.hybrid.rows[:12] %}
+      <div class="struct-card">
+        <div class="struct-card__img">
+          {{ ui.struct_img(row.smiles, '280x200', opt(row.category_label),
+                           row.highlight_atoms|join(',') if row.highlight_atoms else None) }}
+        </div>
+        <div class="struct-card__body">
+          <div class="struct-card__badges" style="margin:0 0 .4rem">
+            <span class="badge badge--{{ 'ok' if row.is_validated else 'warn' }}">
+              {{ ('📌 ' ~ t('badge.validated_short')) if row.is_validated else ('🧪 ' ~ t('badge.theoretical_short')) }}
+            </span>
+            {{ ui.m7_badge(row.m7_class) }}
+          </div>
+          <div class="struct-card__title">{{ opt(row.category_label) }}</div>
+          <div class="struct-card__meta">{{ opt(row.rule_label)|shorten(50) }}</div>
+          <div class="struct-card__smiles">{{ row.smiles }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+
+{# ---- 경로 B ---- #}
+{% set imp = run.impurities %}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">{{ t('process.path_b') }}</span>
+    <span class="card__sub">{{ t('process.path_b_sub') }}</span>
+    <span class="card__spacer"></span>
+    <a class="btn btn--sm btn--ok {{ 'is-disabled' if not imp.records }}"
+       href="{{ url_for('reports.process_download', fmt='xlsx') }}"
+       title="{{ t('process.xlsx_disabled') if not imp.records else '' }}">📊 Excel</a>
+    <a class="btn btn--sm btn--danger"  href="{{ url_for('reports.process_download', fmt='pdf') }}">📕 PDF</a>
+    <a class="btn btn--sm btn--primary" href="{{ url_for('reports.process_download', fmt='docx') }}">📝 Word</a>
+    <a class="btn btn--sm"              href="{{ url_for('reports.process_download', fmt='json') }}">📋 JSON</a>
+  </div>
+
+  <div class="card__body">
+    {% if imp.error %}{{ ui.banner('danger', t('flash.report_failed'), imp.error) }}{% endif %}
+    <div class="metrics">
+      {{ ui.metric(t('process.predicted'), imp.summary.get('total', 0), t('common.count_suffix')) }}
+      {{ ui.metric(t('process.ai_generated'), imp.summary.get('ai_rows', 0), t('common.count_suffix')) }}
+      {{ ui.metric(t('process.db_verified'), imp.summary.get('verified', 0), t('common.count_suffix'), tone='ok') }}
+      {{ ui.metric(t('process.high_risk'), imp.summary.get('high_risk', 0), t('common.count_suffix'),
+                   tone='danger' if imp.summary.get('high_risk') else None) }}
+    </div>
+  </div>
+
+  {% if not imp.records and not imp.error %}
+  <div class="card__body" style="padding-top:0">
+    {{ ui.banner('info', t('process.path_b_empty_title'), t('process.path_b_empty_text')) }}
+  </div>
+  {% endif %}
+
+  {% if imp.records %}
+  <div class="table-wrap" style="max-height:600px;overflow:auto">
+    <table class="table table--compact">
+      <thead>
+        <tr>
+          <th>Source</th><th>{{ t('process.col_type') }}</th><th>{{ t('common.mechanism') }}</th>
+          <th>{{ t('degradation.col_product') }}</th><th class="num">Exact MW</th>
+          <th>ICH M7</th><th>{{ t('degradation.col_similarity') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in imp.records %}
+        {% set cls = r.get('ich_m7_class') %}
+        <tr class="{{ 'row--danger' if cls and cls <= 2 else ('row--warn' if cls == 3 else '') }}">
+          <td class="small">{{ opt(r.get('source_reactant') or '')|shorten(18) }}</td>
+          <td class="small">{{ opt(r.get('classification') or '')|shorten(20) }}</td>
+          <td class="small">{{ opt(r.get('reaction_name') or r.get('name_reaction') or '')|shorten(22) }}</td>
+          <td>{{ ui.smiles_cell(r.get('smiles') or '', 34) }}</td>
+          <td class="num">{{ r.get('exact_mw')|fmt(2) }}</td>
+          <td>{{ ui.m7_badge(cls) }}</td>
+          <td>{{ ui.similarity_badge(r.get('db_match_pct')) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if imp.pipeline_meta %}
+  <div class="card__foot">
+    {% set meta = imp.pipeline_meta %}
+    {% if meta.get('ai_bridge_status') == 'ok' %}
+      <span class="badge badge--ok">{{ t('process.bridge_connected') }}</span>
+    {% elif meta.get('ai_bridge_status') == 'unavailable' %}
+      <span class="badge badge--muted">{{ t('process.bridge_unavailable') }}</span>
+    {% endif %}
+    {% if meta.get('reaction_context') %}
+      <span class="small muted"> · {{ meta.get('reaction_context') }}</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+
+{# ---- 분해산물 ---- #}
+{% if run.degradation %}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">🧬 {{ t('process.degradation_title') }}</span>
+    <span class="card__sub">{{ opt(run.degradation_stress) }} · {{ run.conditions.temperature_c|fmt(0) }}°C</span>
+    <span class="card__spacer"></span>
+    <span class="badge badge--info">{{ run.degradation.products|length }}</span>
+  </div>
+
+  <div class="card__body" style="padding-bottom:0">
+    <div class="row row--tight" style="align-items:center">
+      <span class="small muted">{{ t('process.degradation_parent') }}</span>
+      <span class="smi">{{ run.target_smiles }}</span>
+      {% if run.product and run.target_smiles != run.product %}
+        <span class="badge badge--warn" title="{{ t('process.parent_differs_hint') }}">
+          {{ t('process.parent_differs') }}
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if not run.degradation.products %}
+  <div class="card__body">
+    {{ ui.empty_state('📭', t('degradation.empty_title'), t('degradation.empty_text_process')) }}
+  </div>
+  {% else %}
+  <div class="table-wrap">
+    <table class="table table--compact">
+      <thead><tr>
+        <th>{{ t('degradation.col_route') }}</th><th>{{ t('common.smiles') }}</th>
+        <th class="num">{{ t('common.mw') }}</th><th>ICH M7</th>
+        <th>{{ t('degradation.col_similarity') }}</th>
+      </tr></thead>
+      <tbody>
+      {% for p in run.degradation.products %}
+        <tr class="row--{{ 'danger' if p.signal_tier == 'danger' else ('warn' if p.signal_tier == 'caution' else 'ok') }}">
+          <td>{{ opt(p.pathway) }}</td>
+          <td>{{ ui.smiles_cell(p.smiles) }}</td>
+          <td class="num">{{ p.mw|fmt(2) }}</td>
+          <td>{{ ui.m7_badge(p.m7_class) }}</td>
+          <td>{{ ui.similarity_badge(p.confidence) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% elif run.degradation_stress == stress_none %}
+  {{ ui.banner('info', t('process.degradation_skipped_title'), t('process.degradation_skipped_text')) }}
+{% endif %}
+
+{% endif %}
+
+{% endblock %}

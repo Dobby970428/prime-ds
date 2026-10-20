@@ -1,0 +1,123 @@
+{# ==========================================================================
+   PRIME-DS 공용 매크로
+   ICH M7 용어는 p16_ich_m7_terms.py 상수를 컨텍스트로 받아 씁니다.
+   ========================================================================== #}
+
+{% macro navlink(endpoint, icon, label, badge=None) -%}
+  <a class="navlink{{ ' is-active' if request.endpoint == endpoint else '' }}"
+     href="{{ url_for(endpoint) }}">
+    <span class="navlink__icon">{{ icon }}</span>
+    <span>{{ label }}</span>
+    {%- if badge %}<span class="navlink__badge">{{ badge }}</span>{% endif %}
+  </a>
+{%- endmacro %}
+
+
+{% macro banner(kind, title, text=None, icon=None) -%}
+  {% set icons = {'info':'ℹ️','ok':'✅','warn':'⚠️','danger':'⛔'} %}
+  <div class="banner banner--{{ kind }}">
+    <span class="banner__icon">{{ icon or icons.get(kind, 'ℹ️') }}</span>
+    <div class="grow">
+      <div class="banner__title">{{ title }}</div>
+      {%- if text %}<div class="banner__text">{{ text|safe }}</div>{% endif %}
+    </div>
+  </div>
+{%- endmacro %}
+
+
+{% macro metric(label, value, unit=None, sub=None, tone=None) -%}
+  <div class="metric{{ ' metric--' ~ tone if tone else '' }}">
+    <div class="metric__label">{{ label }}</div>
+    <div class="metric__value">{{ value }}{% if unit %}<span class="metric__unit">{{ unit }}</span>{% endif %}</div>
+    {%- if sub %}<div class="metric__sub">{{ sub }}</div>{% endif %}
+  </div>
+{%- endmacro %}
+
+
+{# ICH M7 등급 배지 — 문구는 p16 상수에서 옵니다 (임의 번역 금지) #}
+{% macro m7_badge(cls, detail=None) -%}
+  {%- if cls is none -%}
+    <span class="m7 m7--muted"><span class="m7__num">—</span>
+      {{ t('common.none') if lang == 'ko' else 'Not classified' }}</span>
+  {%- else -%}
+    <span class="m7 m7--{{ cls|m7_tone }}" title="{{ m7_definition.get(cls, '') }}">
+      <span class="m7__num">{{ cls }}</span>
+      Class {{ cls }}{% if detail %} · <span class="mono small">{{ detail }}</span>{% endif %}
+    </span>
+  {%- endif -%}
+{%- endmacro %}
+
+
+{# 등급 + 축약 정의를 함께 (판정 요약처럼 넓은 자리용) #}
+{% macro m7_badge_full(cls) -%}
+  {%- if cls is not none -%}
+    <span class="m7 m7--{{ cls|m7_tone }}" style="font-size:1rem;padding:.5rem .9rem"
+          title="{{ m7_definition.get(cls, '') }}">
+      <span class="m7__num" style="width:26px;height:26px;font-size:.9rem">{{ cls }}</span>
+      Class {{ cls }} — {{ m7_short.get(cls, '') }}
+    </span>
+  {%- endif -%}
+{%- endmacro %}
+
+
+{# ⚠️ «Confidence»가 아니라 구조 유사도입니다 (ICH_M7_공식용어집.md 12절) #}
+{% macro similarity_badge(score) -%}
+  {%- if score is not none -%}
+    <span class="badge badge--{{ score|confidence_tone }}"
+          title="{{ 'Tanimoto similarity to in-house database' if lang == 'en' else '자체 DB와의 구조 유사도' }}">
+      🎯 {{ score|fmt(1) }}%
+    </span>
+  {%- endif -%}
+{%- endmacro %}
+
+
+{% macro empty_state(icon, title, text=None) -%}
+  <div class="empty">
+    <div class="empty__icon">{{ icon }}</div>
+    <div class="empty__title">{{ title }}</div>
+    {%- if text %}<div class="empty__text">{{ text }}</div>{% endif %}
+  </div>
+{%- endmacro %}
+
+
+{% macro struct_img(smiles, size='300x220', alt='structure', highlight=None) -%}
+  {%- if smiles -%}
+    <img src="{{ url_for('api.structure_png', smiles=smiles, size=size, hl=highlight or '') }}"
+         alt="{{ alt }}" loading="lazy">
+  {%- endif -%}
+{%- endmacro %}
+
+
+{# Ketcher 구조 편집기 #}
+{% macro editor(name, label, tag=None, height=340, value='', preview=True) -%}
+  <div class="editor" data-editor="{{ name }}">
+    <div class="editor__head">
+      <span class="editor__label">{{ label }}</span>
+      {%- if tag %}<span class="editor__tag">{{ tag }}</span>{% endif %}
+      <span class="editor__spacer"></span>
+      <span class="editor__status is-empty" data-role="status">{{ t('editor.empty') }}</span>
+    </div>
+    <iframe class="editor__frame" data-role="frame" height="{{ height }}"
+            title="Ketcher — {{ label }}"
+            allow="clipboard-read; clipboard-write"></iframe>
+    {%- if preview %}
+    <div class="editor__preview" data-role="preview"></div>
+    {%- endif %}
+    <div class="editor__foot">
+      <span class="editor__smiles" data-role="smiles">{{ value or t('editor.placeholder') }}</span>
+      <button type="button" class="btn btn--sm btn--ghost" data-role="clear"
+              title="{{ t('editor.clear') }}">✕</button>
+    </div>
+    <input type="hidden" name="{{ name }}" data-role="input" value="{{ value }}">
+  </div>
+{%- endmacro %}
+
+
+{% macro smiles_cell(smiles, limit=44) -%}
+  <span class="smi" title="{{ smiles }}">{{ smiles|shorten(limit) }}</span>
+{%- endmacro %}
+
+
+{% macro download_btn(href, label, tone='', icon='📥') -%}
+  <a class="btn {{ 'btn--' ~ tone if tone else '' }}" href="{{ href }}">{{ icon }} {{ label }}</a>
+{%- endmacro %}

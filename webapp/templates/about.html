@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block content_class %}content--narrow{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">🧬 {{ t('about.tiers') }}</span>
+    <span class="card__sub">{{ m7_guideline }}</span>
+  </div>
+  <div class="card__body">
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr>
+          <th>{{ t('about.tier') }}</th><th>{{ t('about.principle') }}</th>
+          <th>{{ t('about.implementation') }}</th><th>{{ t('about.status') }}</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><b>Layer A</b></td>
+            <td>{{ t('about.layer_a_principle') }}</td>
+            <td>m7_empirical.db</td>
+            <td>
+              {% if engine.empirical and not engine.empirical.get('error') %}
+                <span class="badge badge--ok">{{ '{:,}'.format(g_stats.empirical) }}</span>
+              {% else %}
+                <span class="badge badge--danger">{{ t('about.error') }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td><b>Layer B</b></td>
+            <td>{{ t('about.layer_b_principle') }}</td>
+            <td>{{ t('about.alerts_impl') }}</td>
+            <td><span class="badge badge--ok">{{ t('about.normal') }}</span></td>
+          </tr>
+          <tr>
+            <td><b>Layer C</b></td>
+            <td>{{ t('about.layer_c_principle') }}</td>
+            <td>ECFP (r=2, 2048 bit) + Random Forest</td>
+            <td>
+              {% set lc = engine.layer_c %}
+              {% if lc.get('ames_available') %}
+                <span class="badge badge--ok">{{ lc.active }}</span>
+              {% else %}
+                <span class="badge badge--danger">{{ t('about.model_missing') }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td><b>Layer D</b></td>
+            <td>{{ t('about.layer_d_principle') }}</td>
+            <td>p69 · Tanimoto &ge; 0.50</td>
+            <td><span class="badge badge--ok">{{ t('about.layer_d_status') }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    {% if engine.layer_c.get('forced') %}
+      {{ ui.banner('warn', t('about.env_override_title'),
+                   engine.layer_c.active ~ ' ' ~ t('about.env_override_text')) }}
+    {% endif %}
+
+    {{ ui.banner('info', t('about.escalation_title'), t('about.escalation_text')) }}
+  </div>
+</div>
+
+
+{# ---- ICH M7 Table 1 — 원문 그대로 ---- #}
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">📋 {{ m7_guideline }} — Table 1</span>
+    <span class="card__sub">{{ m7_guideline_title }}</span>
+  </div>
+  <div class="card__body card__body--flush">
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th style="width:60px">Class</th><th>Definition</th><th>Proposed action for control</th></tr></thead>
+        <tbody>
+        {% for n in [1,2,3,4,5] %}
+          <tr>
+            <td>{{ ui.m7_badge(n) }}</td>
+            <td class="small">{{ m7_definition.get(n) }}</td>
+            <td class="small">{{ m7_action.get(n) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">📊 {{ t('about.performance') }}</span>
+    <span class="card__sub">{{ t('about.validation_set') }}</span>
+  </div>
+  <div class="card__body card__body--flush">
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr><th>{{ t('about.method') }}</th><th class="num">{{ t('about.sensitivity') }}</th>
+              <th class="num">{{ t('about.specificity') }}</th><th class="num">{{ t('about.accuracy') }}</th>
+              <th class="num">{{ t('about.mcc') }}</th></tr>
+        </thead>
+        <tbody>
+          {# 2026-10-06: 스캐폴드 분할(n = 1,288) 실측값으로 교체.
+             출처 논문자료/02_검증결과/external_tools/scaffold_comparison_report.txt
+             규칙 계층이나 모델을 다시 측정하면 이 표도 함께 고칠 것. #}
+          <tr><td>{{ t('about.layer_b_alone') }}</td><td class="num">74.5%</td><td class="num">69.0%</td>
+              <td class="num">71.5%</td><td class="num">0.433</td></tr>
+          <tr><td>{{ t('about.layer_c_alone') }}</td><td class="num">71.1%</td><td class="num">81.0%</td>
+              <td class="num">76.5%</td><td class="num">0.524</td></tr>
+          <tr class="row--ok"><td><b>{{ t('about.ensemble') }}</b></td><td class="num"><b>80.8%</b></td>
+              <td class="num">67.0%</td><td class="num">73.3%</td><td class="num">0.478</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card__foot">{{ t('about.performance_note') }}</div>
+</div>
+
+
+<div class="card">
+  <div class="card__head">
+    <span class="card__title">⚠️ {{ t('about.limitations') }}</span>
+    <span class="card__sub">{{ t('about.limitations_sub') }}</span>
+  </div>
+  <div class="card__body">
+    <div class="stack">
+      {{ ui.banner('danger', t('about.lim_retro_title'),  t('about.lim_retro_text')) }}
+      {{ ui.banner('warn',   t('about.lim_props_title'),  t('about.lim_props_text')) }}
+      {{ ui.banner('warn',   t('about.lim_oecd_title'),   t('about.lim_oecd_text')) }}
+      {{ ui.banner('warn',   t('about.lim_askcos_title'), t('about.lim_askcos_text')) }}
+      {{ ui.banner('warn',   t('about.lim_option_title'), t('about.lim_option_text')) }}
+    </div>
+  </div>
+</div>
+
+
+<div class="card">
+  <div class="card__head"><span class="card__title">🔧 {{ t('about.composition') }}</span></div>
+  <div class="card__body">
+    <dl class="kv">
+      <dt>{{ t('about.degradation_version') }}</dt><dd class="mono">{{ engine.degradation_version }}</dd>
+      <dt>{{ t('about.excipient_catalog') }}</dt>
+      <dd>
+        {% set ex = engine.excipients %}
+        {% if ex and not ex.get('error') %}
+          {{ t('about.total') }} {{ ex.get('total') }}
+          ({{ t('excipient.master') }} {{ ex.get('master') }} · {{ t('excipient.opensource') }} {{ ex.get('opensource') }})
+        {% else %}—{% endif %}
+      </dd>
+      <dt>{{ t('about.nitrite_profiles') }}</dt><dd>{{ t('about.nitrite_profiles_value') }}</dd>
+      <dt>{{ t('about.excipient_rules') }}</dt><dd>{{ t('about.excipient_rules_value') }}</dd>
+      <dt>{{ t('about.editor') }}</dt><dd>{{ t('about.editor_value') }}</dd>
+    </dl>
+  </div>
+</div>
+
+{% endblock %}

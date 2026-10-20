@@ -1,0 +1,38 @@
+# PRIME-DS 배포본 전용 — 버전 고정판
+#
+# requirements.txt 는 개발용(하한만 지정)이고, 이 파일은 배포본 전용입니다.
+# 배포본은 "지금 논문에 실린 수치를 그대로 재현하는 환경" 이어야 하므로
+# 상한을 걸고, 모델 피클이 요구하는 버전에는 못을 박습니다.
+#
+# ── 못을 박은 두 개 ─────────────────────────────────────────────
+#
+# scikit-learn==1.9.0
+#   models/ames_ecfp_rf.pkl 안에 _sklearn_version = '1.9.0' 이 기록되어
+#   있습니다. 다른 버전으로 열면 InconsistentVersionWarning 만 내고
+#   넘어가거나(조용한 오작동), 내부 자료구조가 바뀐 경우 아예 실패합니다.
+#   Layer C 는 앙상블 판정의 한 축이므로 여기서 어긋나면 안 됩니다.
+#   모델을 다시 학습하지 않는 한 이 줄은 바꾸지 마십시오.
+#
+# rdkit==2026.3.6
+#   원고 §2 가 명시한 버전이고, cache/ad_train_fps.pkl 과
+#   cache/substruct_primary.pkl 이 이 버전에서 만들어진 지문 피클입니다.
+#
+# ── 상한을 건 이유 ──────────────────────────────────────────────
+#
+# pandas <3.0 : pandas 3.0 은 주요 동작이 바뀐 메이저 릴리스입니다.
+#               코드가 2.x 기준으로 쓰여 있어 상한을 겁니다.
+# numpy  <3   : scikit-learn 1.9.0 이 numpy 2.x 로 피클된 배열을 읽습니다.
+# fpdf2  <3   : p81:745 의 ln=1, p82:77,85 의 split_only=True 는 이미
+#               deprecated 입니다. 메이저 업이 오면 즉시 깨집니다.
+
+flask>=3.0,<4
+rdkit==2026.3.6
+scikit-learn==1.9.0
+numpy>=2.0,<3
+pandas>=2.2,<3.0
+Pillow>=10.0,<13
+requests>=2.31,<3
+rdchiral==1.1.0
+python-docx>=1.1,<2
+fpdf2>=2.7,<3
+openpyxl>=3.1,<4
