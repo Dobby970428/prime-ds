@@ -14,12 +14,34 @@ import pandas as pd
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+import os
+
+# ── 경로 ──────────────────────────────────────────────────────────────
+#  BASE  : 이 스크립트가 있는 폴더 = 프로젝트 루트
+#  PAPER : 논문자료 폴더. 다른 곳에 두셨다면 환경변수로 알려 주십시오.
+#            set PRIME_PAPER_DIR=<논문자료 폴더의 전체 경로>
 BASE = Path(__file__).resolve().parent
-SRC_V = Path("/mnt/user-data/uploads/PRIME_DS(New)/논문자료/02_검증결과")
-SRC_C = Path("/mnt/user-data/uploads/PRIME_DS(New)/논문자료/03_사례연구")
-S1_MD = Path("/tmp/phase1/표S1_경보예외_추가안.md")
-OUT = BASE / "supplementary"
-OUT.mkdir(exist_ok=True)
+PAPER = Path(os.environ.get("PRIME_PAPER_DIR") or (BASE / "논문자료"))
+SRC_V = PAPER / "02_검증결과"      # 검증 산출물
+SRC_C = PAPER / "03_사례연구"      # 사례연구 산출물
+SRC_M = PAPER / "05_원고"          # 원고·그림·보충자료
+
+
+def _need(path: Path) -> Path:
+    """입력이 없으면 어디를 찾았는지 밝히고 멈춘다."""
+    if not path.exists():
+        raise SystemExit(
+            f"\n  [실패] 입력 파일이 없습니다: {path}\n"
+            f"         논문자료 폴더가 다른 곳이면 PRIME_PAPER_DIR 로 지정하십시오.\n"
+        )
+    return path
+
+# 표 S1 의 원자료 — 경보·예외 측정 노트
+S1_MD = SRC_M / "표S1_경보예외_추가안_20260929.md"
+
+# 보충자료 워크북은 원고 폴더에
+OUT = SRC_M
+OUT.mkdir(parents=True, exist_ok=True)
 XLSX = OUT / "PRIME-DS_Supplementary_Tables.xlsx"
 
 FONT = "Arial"
@@ -31,7 +53,7 @@ BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
 
 # ── Table S1 — 구조 경보 ────────────────────────────────────────────────
 rows = []
-for line in S1_MD.read_text(encoding="utf-8").splitlines():
+for line in _need(S1_MD).read_text(encoding="utf-8").splitlines():
     m = re.match(r"^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([\d,]+)\s*\|\s*([\d.]+)%\s*\|\s*(.+?)\s*\|$",
                  line)
     if m and not line.startswith("| Alert"):
@@ -46,7 +68,7 @@ for line in S1_MD.read_text(encoding="utf-8").splitlines():
 s1 = pd.DataFrame(rows)
 
 # ── Table S2 — 반응 템플릿 ──────────────────────────────────────────────
-s2 = pd.read_csv(SRC_V / "rule_inventory.csv").rename(columns={
+s2 = pd.read_csv(_need(SRC_V / "rule_inventory.csv")).rename(columns={
     "module": "Module", "group": "Group", "container": "Container",
     "rule": "Rule", "status": "Status",
     "n_reactant": "Reactant templates", "n_product": "Product templates",
@@ -55,8 +77,8 @@ s2 = pd.read_csv(SRC_V / "rule_inventory.csv").rename(columns={
 s2["Status"] = s2["Status"].replace({"정상": "active"})
 
 # ── Table S3 — 구조별 검증 결과 ─────────────────────────────────────────
-pv = pd.read_csv(SRC_V / "pipeline_validation_results.csv")
-ad = pd.read_csv(SRC_V / "ad_tanimoto_validation.csv")[
+pv = pd.read_csv(_need(SRC_V / "pipeline_validation_results.csv"))
+ad = pd.read_csv(_need(SRC_V / "ad_tanimoto_validation.csv"))[
     ["smiles", "max_tanimoto", "in_domain"]]
 s3 = pv.merge(ad, on="smiles", how="left").rename(columns={
     "smiles": "SMILES", "actual_ames": "Ames (observed)",
@@ -70,7 +92,7 @@ s3 = pv.merge(ad, on="smiles", how="left").rename(columns={
 })
 
 # ── Table S4 — 사례연구 생성 구조 ───────────────────────────────────────
-ds = pd.read_csv(BASE / "data" / "ds_process_case_study_results.csv")
+ds = pd.read_csv(_need(SRC_C / "ds_process_case_study_results.csv"))
 s4a = pd.DataFrame({
     "Case study": "1 — DS process (losartan route)",
     "Context": ds["rule"],
@@ -84,7 +106,7 @@ s4a = pd.DataFrame({
     "Documented occurrence": ds["reported_source"].fillna(""),
 })
 
-cs = pd.read_csv(SRC_C / "case_study_results.csv")
+cs = pd.read_csv(_need(SRC_C / "case_study_results.csv"))
 cs = cs[cs["product_smiles"].notna()]
 s4b = pd.DataFrame({
     "Case study": "2 — NDSRI formation",
@@ -99,7 +121,7 @@ s4b = pd.DataFrame({
     "Documented occurrence": "",
 })
 
-ex = pd.read_csv(SRC_C / "excipient_case_study_results.csv")
+ex = pd.read_csv(_need(SRC_C / "excipient_case_study_results.csv"))
 s4c = pd.DataFrame({
     "Case study": "3 — Excipient matrix",
     "Context": ex["api_name"] + " × " + ex["excipient"].astype(str),
@@ -113,7 +135,7 @@ s4c = pd.DataFrame({
     "Documented occurrence": "",
 })
 
-bi = pd.read_csv(SRC_C / "binary_compatibility_pairs.csv")
+bi = pd.read_csv(_need(SRC_C / "binary_compatibility_pairs.csv"))
 bi = bi[bi["Impurity_SMILES"].notna()]
 s4d = pd.DataFrame({
     "Case study": "4 — Binary 1:1 pairs",

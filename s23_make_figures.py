@@ -24,9 +24,31 @@ import pandas as pd
 from matplotlib.ticker import PercentFormatter
 from sklearn.metrics import roc_auc_score, roc_curve
 
-SRC = Path("/mnt/user-data/uploads/PRIME_DS(New)/논문자료/02_검증결과")
-OUT = Path(__file__).resolve().parent / "figures"
-OUT.mkdir(exist_ok=True)
+import os
+
+# ── 경로 ──────────────────────────────────────────────────────────────
+#  BASE  : 이 스크립트가 있는 폴더 = 프로젝트 루트
+#  PAPER : 논문자료 폴더. 다른 곳에 두셨다면 환경변수로 알려 주십시오.
+#            set PRIME_PAPER_DIR=<논문자료 폴더의 전체 경로>
+BASE = Path(__file__).resolve().parent
+PAPER = Path(os.environ.get("PRIME_PAPER_DIR") or (BASE / "논문자료"))
+SRC_V = PAPER / "02_검증결과"      # 검증 산출물
+SRC_C = PAPER / "03_사례연구"      # 사례연구 산출물
+SRC_M = PAPER / "05_원고"          # 원고·그림·보충자료
+
+
+def _need(path: Path) -> Path:
+    """입력이 없으면 어디를 찾았는지 밝히고 멈춘다."""
+    if not path.exists():
+        raise SystemExit(
+            f"\n  [실패] 입력 파일이 없습니다: {path}\n"
+            f"         논문자료 폴더가 다른 곳이면 PRIME_PAPER_DIR 로 지정하십시오.\n"
+        )
+    return path
+
+# 그림은 원고 폴더의 figures 로
+OUT = SRC_M / "figures"
+OUT.mkdir(parents=True, exist_ok=True)
 
 # 검증된 팔레트 (dataviz 기준 3슬롯 · all-pairs 통과)
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
@@ -61,8 +83,8 @@ def tidy(ax):
     ax.set_axisbelow(True)
 
 
-ad = pd.read_csv(SRC / "ad_tanimoto_validation.csv")
-stats = json.load((SRC / "statistics_and_ad.json").open(encoding="utf-8"))
+ad = pd.read_csv(_need(SRC_V / "ad_tanimoto_validation.csv"))
+stats = json.load(_need(SRC_V / "statistics_and_ad.json").open(encoding="utf-8"))
 
 # ===========================================================================
 #  Figure 2 — Layer C 의 판별력

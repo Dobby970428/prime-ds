@@ -27,11 +27,31 @@ from rdkit import Chem, RDLogger
 
 RDLogger.DisableLog("rdApp.*")
 
+import os
+
+# ── 경로 ──────────────────────────────────────────────────────────────
+#  BASE  : 이 스크립트가 있는 폴더 = 프로젝트 루트
+#  PAPER : 논문자료 폴더. 다른 곳에 두셨다면 환경변수로 알려 주십시오.
+#            set PRIME_PAPER_DIR=<논문자료 폴더의 전체 경로>
 BASE = Path(__file__).resolve().parent
-DATA = BASE / "data"
-SRC = Path("/mnt/user-data/uploads/PRIME_DS(New)/논문자료/03_사례연구")
-OUT_TXT = DATA / "generation_benefit_report.txt"
-OUT_CSV = DATA / "generation_benefit_table.csv"
+PAPER = Path(os.environ.get("PRIME_PAPER_DIR") or (BASE / "논문자료"))
+SRC_V = PAPER / "02_검증결과"      # 검증 산출물
+SRC_C = PAPER / "03_사례연구"      # 사례연구 산출물
+SRC_M = PAPER / "05_원고"          # 원고·그림·보충자료
+
+
+def _need(path: Path) -> Path:
+    """입력이 없으면 어디를 찾았는지 밝히고 멈춘다."""
+    if not path.exists():
+        raise SystemExit(
+            f"\n  [실패] 입력 파일이 없습니다: {path}\n"
+            f"         논문자료 폴더가 다른 곳이면 PRIME_PAPER_DIR 로 지정하십시오.\n"
+        )
+    return path
+
+# 산출물은 다른 사례연구 결과와 같은 곳에 쓴다
+OUT_TXT = SRC_C / "generation_benefit_report.txt"
+OUT_CSV = SRC_C / "generation_benefit_table.csv"
 
 BAR = "=" * 78
 _log: list[str] = []
@@ -57,10 +77,10 @@ def keys(series) -> set[str]:
 N_INTERACTION_RULES = 14
 
 # ── 자료 읽기 ───────────────────────────────────────────────────────────
-ds = pd.read_csv(DATA / "ds_process_case_study_results.csv")
-cs = pd.read_csv(SRC / "case_study_results.csv")
-ex = pd.read_csv(SRC / "excipient_case_study_results.csv")
-bi = pd.read_csv(SRC / "binary_compatibility_pairs.csv")
+ds = pd.read_csv(_need(SRC_C / "ds_process_case_study_results.csv"))
+cs = pd.read_csv(_need(SRC_C / "case_study_results.csv"))
+ex = pd.read_csv(_need(SRC_C / "excipient_case_study_results.csv"))
+bi = pd.read_csv(_need(SRC_C / "binary_compatibility_pairs.csv"))
 
 ds_imp = ds[(ds["step"] != "0 · Reference") & (ds["role"] != "Main product")]
 cs_p = cs[cs["product_smiles"].notna()]
@@ -172,7 +192,7 @@ say("        양쪽에서 나오기 때문이며, 이것이 두 품목이 같은
 say()
 say(BAR)
 
-DATA.mkdir(exist_ok=True)
+SRC_C.mkdir(parents=True, exist_ok=True)
 with OUT_CSV.open("w", newline="", encoding="utf-8-sig") as fh:
     w = csv.DictWriter(fh, fieldnames=list(ROWS[0].keys()))
     w.writeheader()
